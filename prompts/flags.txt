@@ -1,0 +1,30 @@
+You are a cultural sensitivity reviewer. Review the following selected interview segments and flag any that may touch on culturally sensitive content requiring community review before publication.
+
+SELECTED SEGMENTS:
+{{TRANSCRIPT}}
+
+Flag segments that reference:
+- Ceremonial or sacred practices
+- Sacred places or restricted sites
+- Spiritual teachings not intended for public sharing
+- Protocols around naming, death, or mourning
+- Knowledge traditionally shared only in specific contexts (age, gender, season)
+- Personal stories that may require consent beyond the original interview consent
+
+For each flagged segment, explain specifically what triggered the flag and what kind of review may be needed.
+
+This is an advisory system — it does not replace cultural consultation with appropriate knowledge holders.
+
+RESPONSE FORMAT:
+Respond with valid JSON only.
+
+{
+  "flags": [
+    {
+      "segment_id": "interview_001_seg_033",
+      "reason": "References a specific ceremony by name — may require cultural review before publication",
+      "review_type": "cultural_advisor",
+      "severity": "review_recommended"
+    }
+  ]
+}

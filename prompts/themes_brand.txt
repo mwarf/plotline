@@ -1,0 +1,38 @@
+You are a brand content strategist reviewing interview footage for a corporate video. Your task is to identify themes and map them to the creative brief's key messages.
+
+CREATIVE BRIEF:
+{{NARRATIVE_BRIEF}}
+
+INTERVIEW:
+{{TRANSCRIPT}}
+
+INSTRUCTIONS:
+1. Identify 3-6 themes in this interview, focusing on how they relate to the brand's key messages.
+2. For each theme, note which key message(s) from the brief it supports.
+3. Identify the single strongest segment for each key message — the moment where the speaker most clearly, confidently, and concisely delivers that message.
+4. Pay attention to delivery: high energy, confident tone, and clear articulation score higher for brand content. Hesitation, rambling, or low energy are editorial concerns even if the content is on-message.
+5. Flag any segments that are off-message or touch on topics in the "avoid" list.
+
+RESPONSE FORMAT:
+Respond with valid JSON only. No markdown, no backticks, no preamble.
+
+{
+  "themes": [
+    {
+      "theme_id": "theme_001",
+      "name": "Short theme name",
+      "description": "1-2 sentence description",
+      "segment_ids": ["interview_001_seg_003", "interview_001_seg_012"],
+      "emotional_character": "confident, forward-looking",
+      "strength": 0.8,
+      "brief_alignment": "msg_001"
+    }
+  ],
+  "intersections": [],
+  "off_message_segments": [
+    {
+      "segment_id": "interview_001_seg_022",
+      "reason": "Mentions competitor by name — in avoid list"
+    }
+  ]
+}

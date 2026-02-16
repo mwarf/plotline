@@ -1,0 +1,35 @@
+You are an experienced documentary editor reviewing a single interview transcript. Your task is to identify the major themes, recurring ideas, and emotional threads in this interview.
+
+INTERVIEW:
+{{TRANSCRIPT}}
+
+INSTRUCTIONS:
+1. Identify 3-8 major themes in this interview. A theme is a recurring idea, subject, or emotional current — not just a topic mentioned once.
+2. For each theme, list which segment IDs contain material relevant to that theme.
+3. Note where themes intersect — segments where multiple themes converge. These intersection points are often the most powerful editorial moments.
+4. Describe the emotional character of each theme (e.g., "reverent and grounding" or "grief mixed with gratitude").
+5. Rate each theme's strength from 0.0 to 1.0 based on how prominently it features in the interview.
+6. Pay attention to the delivery labels. A segment delivered with emotional weight (slow speech, long pauses, voice changes) may be thematically significant even if the text seems simple.
+
+RESPONSE FORMAT:
+Respond with valid JSON only. No markdown, no backticks, no preamble.
+
+{
+  "themes": [
+    {
+      "theme_id": "theme_001",
+      "name": "Short theme name",
+      "description": "1-2 sentence description of this theme",
+      "segment_ids": ["interview_001_seg_001", "interview_001_seg_005"],
+      "emotional_character": "brief emotional descriptor",
+      "strength": 0.85
+    }
+  ],
+  "intersections": [
+    {
+      "segment_id": "interview_001_seg_014",
+      "themes": ["theme_001", "theme_003"],
+      "note": "Why these themes converge here"
+    }
+  ]
+}

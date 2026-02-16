@@ -1,0 +1,26 @@
+# Documentary Profile
+# For documentary filmmaking with emphasis on emotional authenticity
+
+project_profile: documentary
+
+# Delivery weights optimized for documentary
+# Emphasizes pauses and speech rate as editorial indicators
+delivery_weights:
+  energy: 0.15
+  pitch_variation: 0.15
+  speech_rate: 0.25
+  pause_weight: 0.30
+  spectral_brightness: 0.10
+  voice_texture: 0.05
+
+# Target duration for documentary pieces (10 minutes default)
+target_duration_seconds: 600
+
+# LLM model for analysis
+llm_model: llama3.1:70b-instruct-q4_K_M
+
+# Cultural content flagging (disabled by default for documentary)
+cultural_flags: false
+
+# Prompt template for theme extraction
+theme_prompt: themes.txt

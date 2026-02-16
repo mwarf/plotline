@@ -1,0 +1,27 @@
+# Commercial Documentary Profile
+# Hybrid: documentary style with brand message alignment
+# Inherits from documentary, adds cultural sensitivity and brief alignment
+
+project_profile: commercial-doc
+inherits: documentary
+
+# Delivery weights - balanced between documentary and brand
+delivery_weights:
+  energy: 0.25
+  pitch_variation: 0.12
+  speech_rate: 0.20
+  pause_weight: 0.20
+  spectral_brightness: 0.15
+  voice_texture: 0.08
+
+# Target duration (5 minutes default)
+target_duration_seconds: 300
+
+# LLM model for analysis
+llm_model: llama3.1:70b-instruct-q4_K_M
+
+# Cultural content flagging enabled for commercial-doc
+cultural_flags: true
+
+# Uses brand-aligned theme prompt for brief mapping
+theme_prompt: themes_brand.txt

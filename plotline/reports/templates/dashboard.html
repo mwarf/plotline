@@ -1,0 +1,128 @@
+{% extends "base.html" %} {% block title %}{{ project_name }} - Pipeline
+Dashboard{% endblock %} {% block extra_styles %} .stage-progress { display:
+flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem; } .stage-node {
+width: 24px; height: 24px; border-radius: 50%; display: flex; align-items:
+center; justify-content: center; font-size: 0.625rem; font-weight: 600;
+background: var(--color-bg-tertiary); color: var(--color-text-muted);
+transition: all var(--transition-fast); } .stage-node.completed { background:
+var(--color-success); color: white; } .stage-node.in-progress { background:
+var(--color-accent-primary); color: white; } .stage-node.pending { background:
+var(--color-bg-tertiary); color: var(--color-text-muted); } .stage-connector {
+flex: 1; height: 2px; background: var(--color-bg-tertiary); }
+.stage-connector.completed { background: var(--color-success); } .stage-labels {
+display: flex; justify-content: space-between; margin-top: 0.5rem; font-size:
+0.625rem; color: var(--color-text-muted); text-transform: uppercase;
+letter-spacing: 0.05em; } .stage-label { width: 24px; text-align: center; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+margin-bottom: 2rem; } .stat-card { background: var(--color-bg-secondary);
+border-radius: var(--radius-md); padding: 1rem; text-align: center; }
+.stat-value { font-size: 2rem; font-weight: 700; color:
+var(--color-text-primary); } .stat-label { font-size: 0.75rem; color:
+var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+} .interview-grid { display: grid; grid-template-columns: repeat(auto-fill,
+minmax(320px, 1fr)); gap: 1rem; } .interview-card { background:
+var(--color-bg-card); border: 1px solid var(--color-border); border-radius:
+var(--radius-lg); padding: 1.25rem; cursor: pointer; transition: all
+var(--transition-fast); } .interview-card:hover { border-color:
+var(--color-accent-primary); transform: translateY(-2px); } .interview-filename
+{ font-weight: 600; margin-bottom: 0.25rem; white-space: nowrap; overflow:
+hidden; text-overflow: ellipsis; } .interview-meta { display: flex; gap: 1rem;
+font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 1rem; }
+.stage-names { display: flex; justify-content: space-between; margin-top:
+0.5rem; } .stage-name { width: 24px; text-align: center; font-size: 0.5rem;
+color: var(--color-text-muted); text-transform: uppercase; } {% endblock %} {%
+block content %}
+<div class="header">
+  <div>
+    <h1>{{ project_name }}</h1>
+    <p class="text-secondary mt-1">Created {{ created }}</p>
+  </div>
+  <div class="header-meta">
+    <span class="badge badge-primary">{{ profile }}</span>
+    <a href="#" class="btn btn-secondary no-print" onclick="window.print()"
+      >Export PDF</a
+    >
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ interview_count }}</div>
+    <div class="stat-label">Interviews</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ total_duration }}</div>
+    <div class="stat-label">Total Duration</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ completed_stages }}</div>
+    <div class="stat-label">Completed</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ selected_duration }}</div>
+    <div class="stat-label">Selected</div>
+  </div>
+</div>
+
+<h2 class="mb-4">Interviews</h2>
+
+<div class="interview-grid">
+  {% for interview in interviews %}
+  <div
+    class="interview-card"
+    onclick="window.location='transcript_{{ interview.id }}.html'"
+  >
+    <div class="interview-filename">{{ interview.filename }}</div>
+    <div class="interview-meta">
+      <span>{{ interview.duration }}</span>
+      <span>{{ interview.segment_count }} segments</span>
+    </div>
+    <div class="stage-progress">
+      {% for stage in interview.stages %}
+      <div class="stage-node {{ stage.status }}" title="{{ stage.name }}">
+        {% if stage.status == 'completed' %}✓{% elif stage.status ==
+        'in-progress' %}●{% else %}{{ stage.initial }}{% endif %}
+      </div>
+      {% if not loop.last %}
+      <div
+        class="stage-connector {{ 'completed' if stage.status == 'completed' else '' }}"
+      ></div>
+      {% endif %} {% endfor %}
+    </div>
+    <div class="stage-names">
+      {% for stage in interview.stages %}
+      <div class="stage-name">{{ stage.initial }}</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if has_brief %}
+<div class="card mt-4">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Creative Brief</div>
+      <div class="card-subtitle">{{ brief_name }}</div>
+    </div>
+    <span class="badge badge-success">Attached</span>
+  </div>
+  <div class="text-secondary">{{ brief_summary }}</div>
+</div>
+{% endif %}
+
+<div class="card mt-4 no-print">
+  <div class="card-title mb-2">Quick Actions</div>
+  <div class="flex gap-2">
+    <button class="btn btn-primary" onclick="alert('Run: plotline themes')">
+      Run Next Stage
+    </button>
+    <button class="btn btn-secondary" onclick="window.location='review.html'">
+      Open Review
+    </button>
+    <button class="btn btn-secondary" onclick="alert('Run: plotline export')">
+      Export Timeline
+    </button>
+  </div>
+</div>
+{% endblock %}

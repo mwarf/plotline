@@ -1,0 +1,26 @@
+# Brand Profile
+# For corporate/brand videos with emphasis on message clarity and confidence
+
+project_profile: brand
+
+# Delivery weights optimized for brand content
+# Emphasizes energy and spectral brightness for polished delivery
+delivery_weights:
+  energy: 0.30
+  pitch_variation: 0.10
+  speech_rate: 0.15
+  pause_weight: 0.10
+  spectral_brightness: 0.20
+  voice_texture: 0.15
+
+# Target duration for brand pieces (3 minutes default)
+target_duration_seconds: 180
+
+# LLM model for analysis
+llm_model: llama3.1:70b-instruct-q4_K_M
+
+# Cultural content flagging
+cultural_flags: false
+
+# Prompt template for theme extraction (includes brief mapping)
+theme_prompt: themes_brand.txt

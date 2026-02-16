@@ -1,0 +1,240 @@
+{% extends "base.html" %} {% block title %}{{ project_name }} - Selection
+Review{% endblock %} {% block extra_styles %} .review-container { display: grid;
+grid-template-columns: 1fr 400px; gap: 2rem; min-height: calc(100vh - 4rem); }
+@media (max-width: 1024px) { .review-container { grid-template-columns: 1fr; } }
+.timeline { display: flex; flex-direction: column; gap: 1rem; } .segment-card {
+background: var(--color-bg-card); border: 1px solid var(--color-border);
+border-radius: var(--radius-lg); padding: 1.25rem; cursor: pointer; transition:
+all var(--transition-fast); border-left: 4px solid transparent; }
+.segment-card:hover { border-color: var(--color-border-light); }
+.segment-card.focused { border-color: var(--color-accent-primary); box-shadow: 0
+0 0 2px rgba(59, 130, 246, 0.2); } .segment-card.approved { border-left-color:
+var(--color-success); } .segment-card.rejected { opacity: 0.5; order: 999; }
+.segment-card.flagged { border-left-color: var(--color-warning); }
+.segment-header { display: flex; justify-content: space-between; align-items:
+flex-start; margin-bottom: 0.75rem; } .segment-role { display: inline-flex;
+align-items: center; padding: 0.25rem 0.5rem; background:
+var(--color-accent-primary); border-radius: var(--radius-sm); font-size:
+0.75rem; font-weight: 600; text-transform: uppercase; } .segment-timecode {
+font-family: var(--font-mono); font-size: 0.75rem; color:
+var(--color-text-secondary); } .segment-text { font-size: 1rem; line-height:
+1.6; margin-bottom: 0.75rem; } .segment-meta { display: flex; justify-content:
+space-between; align-items: center; font-size: 0.75rem; color:
+var(--color-text-secondary); } .segment-themes { display: flex; flex-wrap: wrap;
+gap: 0.25rem; } .segment-actions { display: flex; gap: 0.5rem; margin-top: 1rem;
+} .segment-actions button { flex: 1; } .segment-notes { margin-top: 0.75rem;
+padding: 0.75rem; background: var(--color-bg-tertiary); border-radius:
+var(--radius-md); font-size: 0.875rem; color: var(--color-text-secondary); }
+.sidebar { position: sticky; top: 2rem; height: fit-content; } .summary-card {
+background: var(--color-bg-card); border: 1px solid var(--color-border);
+border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.summary-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap:
+0.5rem; text-align: center; } .summary-stat { padding: 0.5rem; border-radius:
+var(--radius-md); background: var(--color-bg-tertiary); } .summary-stat-value {
+font-size: 1.5rem; font-weight: 700; } .summary-stat-label { font-size:
+0.625rem; text-transform: uppercase; color: var(--color-text-secondary); }
+.filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; } .filter-btn {
+flex: 1; } .filter-btn.active { background: var(--color-accent-primary); color:
+white; } .audio-player { margin-top: 1rem; padding: 1rem; background:
+var(--color-bg-tertiary); border-radius: var(--radius-md); } .audio-player audio
+{ width: 100%; margin-top: 0.5rem; } .keyboard-hint { display: flex; flex-wrap:
+wrap; gap: 0.5rem; font-size: 0.75rem; color: var(--color-text-muted); } .kbd {
+display: inline-flex; align-items: center; justify-content: center; min-width:
+1.5rem; height: 1.5rem; padding: 0 0.25rem; background:
+var(--color-bg-tertiary); border-radius: var(--radius-sm); font-family:
+var(--font-mono); font-size: 0.625rem; } .dragging { opacity: 0.5; transform:
+scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
+{% endblock %} {% block content %}
+<div class="header">
+  <div>
+    <h1>Selection Review</h1>
+    <p class="text-secondary mt-1">
+      {{ project_name }} · {{ total_segments }} segments · {{ total_duration }}
+    </p>
+  </div>
+  <div class="header-meta no-print">
+    <button class="btn btn-primary" onclick="exportApproved()">
+      Export Approved ({{ approved_count }})
+    </button>
+  </div>
+</div>
+
+<div class="review-container">
+  <div class="timeline" id="timeline">
+    {% for segment in segments %}
+    <div
+      class="segment-card"
+      data-id="{{ segment.id }}"
+      data-status="{{ segment.status }}"
+      draggable="true"
+      tabindex="0"
+    >
+      <div class="segment-header">
+        <span class="segment-role">{{ segment.role }}</span>
+        <span class="segment-timecode">{{ segment.timecode }}</span>
+      </div>
+      <div class="segment-text">{{ segment.text }}</div>
+      <div class="segment-meta">
+        <div class="segment-themes">
+          {% for theme in segment.themes %}
+          <span class="pill">{{ theme }}</span>
+          {% endfor %}
+        </div>
+        <div class="delivery-badge">
+          <div class="delivery-bar">
+            <div
+              class="delivery-bar-segment {{ segment.delivery_class }}"
+            ></div>
+            <div
+              class="delivery-bar-segment {{ segment.delivery_class }}"
+            ></div>
+            <div
+              class="delivery-bar-segment {% if segment.delivery_score > 0.33 %}{{ segment.delivery_class }}{% endif %}"
+            ></div>
+          </div>
+          <span class="text-muted ml-1">{{ segment.delivery_label }}</span>
+        </div>
+      </div>
+      {% if segment.editorial_notes %}
+      <div class="segment-notes">{{ segment.editorial_notes }}</div>
+      {% endif %}
+      <div class="segment-actions no-print">
+        <button
+          class="btn btn-success btn-sm"
+          onclick="setStatus('{{ segment.id }}', 'approved')"
+        >
+          ✓ Approve (A)
+        </button>
+        <button
+          class="btn btn-error btn-sm"
+          onclick="setStatus('{{ segment.id }}', 'rejected')"
+        >
+          ✗ Reject (X)
+        </button>
+        <button
+          class="btn btn-secondary btn-sm"
+          onclick="setStatus('{{ segment.id }}', 'flagged')"
+        >
+          ⚠ Flag (F)
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="sidebar">
+    <div class="summary-card">
+      <div class="card-title mb-2">Summary</div>
+      <div class="summary-stats">
+        <div class="summary-stat">
+          <div class="summary-stat-value text-success">
+            {{ approved_count }}
+          </div>
+          <div class="summary-stat-label">Approved</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-stat-value text-error">{{ rejected_count }}</div>
+          <div class="summary-stat-label">Rejected</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-stat-value text-warning">{{ flagged_count }}</div>
+          <div class="summary-stat-label">Flagged</div>
+        </div>
+      </div>
+      <div class="progress-bar mt-2">
+        <div
+          class="progress-bar-fill"
+          style="width: {{ progress_percent }}%"
+        ></div>
+      </div>
+    </div>
+
+    <div class="summary-card no-print">
+      <div class="card-title mb-2">Filters</div>
+      <div class="filters">
+        <button
+          class="btn btn-secondary filter-btn active"
+          data-filter="all"
+          onclick="filterSegments('all')"
+        >
+          All
+        </button>
+        <button
+          class="btn btn-secondary filter-btn"
+          data-filter="pending"
+          onclick="filterSegments('pending')"
+        >
+          Pending
+        </button>
+        <button
+          class="btn btn-secondary filter-btn"
+          data-filter="approved"
+          onclick="filterSegments('approved')"
+        >
+          Approved
+        </button>
+      </div>
+    </div>
+
+    <div class="audio-player no-print" id="audioPlayer" style="display: none">
+      <div class="text-secondary mb-1">Now Playing</div>
+      <div id="audioSource"></div>
+      <audio id="audio" controls preload="auto"></audio>
+    </div>
+
+    <div class="summary-card no-print">
+      <div class="card-title mb-2">Keyboard Shortcuts</div>
+      <div class="keyboard-hint">
+        <span><span class="kbd">Space</span> Play</span>
+        <span><span class="kbd">A</span> Approve</span>
+        <span><span class="kbd">X</span> Reject</span>
+        <span><span class="kbd">F</span> Flag</span>
+        <span><span class="kbd">↑↓</span> Navigate</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %} let currentIndex = 0; const segments =
+document.querySelectorAll('.segment-card'); const audio =
+document.getElementById('audio'); const audioPlayer =
+document.getElementById('audioPlayer'); const audioSource =
+document.getElementById('audioSource'); function focusSegment(index) {
+segments.forEach((s, i) => { s.classList.toggle('focused', i === index); });
+currentIndex = index; segments[index].scrollIntoView({ behavior: 'smooth',
+block: 'center' }); segments[index].focus(); const segmentData =
+reportData.segments[index]; if (segmentData && segmentData.audio_path) {
+audio.src = segmentData.audio_path; audioSource.textContent =
+segmentData.timecode + ' - ' + segmentData.text.substring(0, 50);
+audioPlayer.style.display = 'block'; } } function setStatus(id, status) { const
+card = document.querySelector(`[data-id="${id}"]`); card.dataset.status =
+status; card.classList.remove('approved', 'rejected', 'flagged'); if (status !==
+'pending') { card.classList.add(status); } saveApprovals(); updateSummary(); }
+function filterSegments(filter) {
+document.querySelectorAll('.filter-btn').forEach(btn => {
+btn.classList.toggle('active', btn.dataset.filter === filter); });
+segments.forEach(s => { const status = s.dataset.status; const show = filter ===
+'all' || status === filter || (filter === 'pending' && status === 'pending');
+s.style.display = show ? '' : 'none'; }); } function saveApprovals() { const
+approvals = {}; segments.forEach(s => { approvals[s.dataset.id] =
+s.dataset.status; }); fetch('approvals.json', { method: 'PUT', body:
+JSON.stringify({ segments: Object.entries(approvals).map(([id, status]) => ({
+segment_id: id, status })) }) }).catch(() => {}); } function updateSummary() {
+let approved = 0, rejected = 0, flagged = 0; segments.forEach(s => { if
+(s.dataset.status === 'approved') approved++; else if (s.dataset.status ===
+'rejected') rejected++; else if (s.dataset.status === 'flagged') flagged++; });
+document.querySelector('.summary-stat.text-success').textContent = approved;
+document.querySelector('.summary-stat.text-error').textContent = rejected;
+document.querySelector('.summary-stat.text-warning').textContent = flagged; }
+function exportApproved() { window.location.href = '../plotline_selects.edl'; }
+document.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT'
+|| e.target.tagName === 'TEXTAREA') return; const focused =
+document.querySelector('.segment-card.focused'); const id = focused?.dataset.id;
+switch(e.key) { case 'ArrowDown': e.preventDefault(); if (currentIndex <
+segments.length - 1) focusSegment(currentIndex + 1); break; case 'ArrowUp':
+e.preventDefault(); if (currentIndex > 0) focusSegment(currentIndex - 1); break;
+case 'a': case 'A': if (id) setStatus(id, 'approved'); break; case 'x': case
+'X': if (id) setStatus(id, 'rejected'); break; case 'f': case 'F': if (id)
+setStatus(id, 'flagged'); break; case ' ': e.preventDefault(); if (audio.src) {
+audio.paused ? audio.play() : audio.pause(); } break; } }); segments.forEach((s,
+i) => { s.addEventListener('click', () => focusSegment(i)); }); if
+(segments.length > 0) { focusSegment(0); } {% endblock %}
