@@ -1,0 +1,1625 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plotline — From Interview to Timeline</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0a0a0c;
+        --bg-elevated: #111114;
+        --bg-card: #16161a;
+        --bg-card-hover: #1c1c22;
+        --text-primary: #f0ede8;
+        --text-secondary: #9b978f;
+        --text-muted: #5c5952;
+        --accent: #e8563a;
+        --accent-glow: rgba(232, 86, 58, 0.15);
+        --accent-soft: #d4a574;
+        --blue: #4a8fe7;
+        --green: #5cb97a;
+        --violet: #8b7ec8;
+        --border: rgba(240, 237, 232, 0.08);
+        --border-accent: rgba(232, 86, 58, 0.3);
+        --font-display: "Instrument Serif", Georgia, serif;
+        --font-body: "DM Sans", -apple-system, sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--text-primary);
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ─── GRAIN OVERLAY ─── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0.025;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        background-size: 256px 256px;
+      }
+
+      /* ─── REVEAL ANIMATIONS ─── */
+      .reveal {
+        opacity: 0;
+        transform: translateY(40px);
+        transition:
+          opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .reveal-delay-1 {
+        transition-delay: 0.1s;
+      }
+      .reveal-delay-2 {
+        transition-delay: 0.2s;
+      }
+      .reveal-delay-3 {
+        transition-delay: 0.3s;
+      }
+      .reveal-delay-4 {
+        transition-delay: 0.4s;
+      }
+      .reveal-delay-5 {
+        transition-delay: 0.5s;
+      }
+
+      /* ─── NAV ─── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        padding: 20px 48px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        backdrop-filter: blur(20px);
+        background: rgba(10, 10, 12, 0.7);
+        border-bottom: 1px solid var(--border);
+        transition: all 0.4s ease;
+      }
+      nav.scrolled {
+        padding: 14px 48px;
+      }
+      .nav-logo {
+        font-family: var(--font-display);
+        font-size: 22px;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+        text-decoration: none;
+      }
+      .nav-logo span {
+        color: var(--accent);
+      }
+      .nav-links {
+        display: flex;
+        gap: 36px;
+        align-items: center;
+      }
+      .nav-links a {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-decoration: none;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        transition: color 0.3s;
+      }
+      .nav-links a:hover {
+        color: var(--text-primary);
+      }
+      .nav-cta {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: var(--accent) !important;
+        border: 1px solid var(--border-accent);
+        padding: 8px 20px;
+        border-radius: 4px;
+        transition: all 0.3s !important;
+      }
+      .nav-cta:hover {
+        background: var(--accent-glow);
+        border-color: var(--accent);
+      }
+
+      /* ─── HERO ─── */
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 140px 48px 100px;
+        position: relative;
+      }
+      .hero::before {
+        content: "";
+        position: absolute;
+        top: -20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 800px;
+        height: 800px;
+        background: radial-gradient(
+          ellipse,
+          rgba(232, 86, 58, 0.06) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+      .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        border: 1px solid var(--border);
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 40px;
+      }
+      .hero-badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 2s ease infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .hero h1 {
+        font-family: var(--font-display);
+        font-size: clamp(52px, 7.5vw, 96px);
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
+        margin-bottom: 32px;
+        max-width: 900px;
+      }
+      .hero h1 em {
+        font-style: italic;
+        color: var(--accent);
+      }
+      .hero-sub {
+        font-size: 19px;
+        line-height: 1.7;
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin-bottom: 56px;
+        font-weight: 300;
+      }
+      .hero-actions {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 32px;
+        background: var(--accent);
+        color: #fff;
+        font-family: var(--font-body);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s;
+      }
+      .btn-primary:hover {
+        background: #d44d33;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 32px rgba(232, 86, 58, 0.25);
+      }
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 32px;
+        background: transparent;
+        color: var(--text-secondary);
+        font-family: var(--font-body);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s;
+      }
+      .btn-secondary:hover {
+        color: var(--text-primary);
+        border-color: rgba(240, 237, 232, 0.2);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .hero-scroll {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        animation: float 3s ease infinite;
+      }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          transform: translateX(-50%) translateY(8px);
+        }
+      }
+      .hero-scroll-line {
+        width: 1px;
+        height: 40px;
+        background: linear-gradient(to bottom, var(--text-muted), transparent);
+      }
+
+      /* ─── PIPELINE SECTION ─── */
+      .section {
+        padding: 140px 48px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 20px;
+      }
+      .section-title {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 4.5vw, 56px);
+        font-weight: 400;
+        line-height: 1.1;
+        letter-spacing: -0.025em;
+        margin-bottom: 24px;
+        max-width: 700px;
+      }
+      .section-desc {
+        font-size: 17px;
+        line-height: 1.75;
+        color: var(--text-secondary);
+        max-width: 560px;
+        font-weight: 300;
+      }
+
+      /* ─── PIPELINE VISUALIZATION ─── */
+      .pipeline-wrap {
+        padding: 100px 48px 140px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 2px;
+        margin-top: 80px;
+        position: relative;
+      }
+      .pipeline::before {
+        content: "";
+        position: absolute;
+        top: 40px;
+        left: 8%;
+        right: 8%;
+        height: 1px;
+        background: linear-gradient(
+          to right,
+          transparent,
+          var(--border) 10%,
+          var(--border) 90%,
+          transparent
+        );
+      }
+      .pipeline-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        position: relative;
+        padding: 0 8px;
+      }
+      .pipeline-node {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--bg-elevated);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin-bottom: 20px;
+        position: relative;
+        transition: all 0.4s;
+      }
+      .pipeline-step:hover .pipeline-node {
+        border-color: var(--accent);
+        background: var(--accent-glow);
+        transform: scale(1.08);
+      }
+      .pipeline-step-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+        letter-spacing: 0.01em;
+      }
+      .pipeline-step-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.5;
+        max-width: 140px;
+      }
+
+      /* ─── DELIVERY VISUALIZATION DEMO ─── */
+      .delivery-demo-section {
+        padding: 0 48px 140px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .delivery-demo {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 40px;
+        margin-top: 60px;
+        position: relative;
+        overflow: hidden;
+      }
+      .delivery-demo::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          to right,
+          transparent,
+          var(--accent),
+          transparent
+        );
+        opacity: 0.5;
+      }
+      .delivery-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+      }
+      .delivery-title {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .delivery-legend {
+        display: flex;
+        gap: 24px;
+      }
+      .delivery-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .delivery-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+      .delivery-waveform {
+        height: 120px;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        margin-bottom: 24px;
+      }
+      .wave-bar {
+        flex: 1;
+        border-radius: 2px 2px 0 0;
+        min-height: 4px;
+        transition: all 0.3s;
+        position: relative;
+      }
+      .wave-bar:hover {
+        filter: brightness(1.3);
+        transform: scaleY(1.05);
+        transform-origin: bottom;
+      }
+      .delivery-timecodes {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 32px;
+        padding: 0 4px;
+      }
+      .delivery-segments {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .segment-card {
+        display: grid;
+        grid-template-columns: 100px 1fr auto;
+        gap: 20px;
+        align-items: start;
+        padding: 16px 20px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        transition: all 0.3s;
+      }
+      .segment-card:hover {
+        border-color: rgba(240, 237, 232, 0.12);
+        background: rgba(255, 255, 255, 0.035);
+      }
+      .segment-card.highlight {
+        border-left: 3px solid var(--accent);
+        background: var(--accent-glow);
+      }
+      .segment-tc {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-muted);
+        padding-top: 2px;
+      }
+      .segment-text {
+        font-size: 14px;
+        line-height: 1.65;
+        color: var(--text-secondary);
+      }
+      .segment-text em {
+        color: var(--text-primary);
+        font-style: normal;
+      }
+      .delivery-badge {
+        display: flex;
+        gap: 3px;
+        align-items: flex-end;
+        height: 24px;
+        padding-top: 2px;
+      }
+      .delivery-bar {
+        width: 5px;
+        border-radius: 1px;
+        min-height: 4px;
+      }
+
+      /* ─── FEATURE SPLIT SECTIONS ─── */
+      .features-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px;
+        margin-top: 80px;
+      }
+      .feature-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 56px 48px;
+        transition: all 0.5s;
+        position: relative;
+        overflow: hidden;
+      }
+      .feature-card:hover {
+        background: var(--bg-card-hover);
+        border-color: rgba(240, 237, 232, 0.12);
+      }
+      .feature-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(to right, var(--accent), transparent);
+        opacity: 0;
+        transition: opacity 0.5s;
+      }
+      .feature-card:hover::after {
+        opacity: 0.6;
+      }
+      .feature-icon {
+        font-size: 32px;
+        margin-bottom: 24px;
+        display: block;
+      }
+      .feature-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent-soft);
+        margin-bottom: 12px;
+      }
+      .feature-name {
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 400;
+        margin-bottom: 16px;
+        letter-spacing: -0.01em;
+      }
+      .feature-desc {
+        font-size: 15px;
+        line-height: 1.7;
+        color: var(--text-secondary);
+        font-weight: 300;
+      }
+
+      /* ─── PROFILE CARDS ─── */
+      .profiles-section {
+        padding: 140px 48px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .profiles-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+        margin-top: 80px;
+      }
+      .profile-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 48px 40px;
+        position: relative;
+        transition: all 0.5s;
+      }
+      .profile-card:hover {
+        background: var(--bg-card-hover);
+      }
+      .profile-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        opacity: 0.8;
+      }
+      .profile-card:nth-child(1)::before {
+        background: var(--accent);
+      }
+      .profile-card:nth-child(2)::before {
+        background: var(--blue);
+      }
+      .profile-card:nth-child(3)::before {
+        background: var(--violet);
+      }
+      .profile-name {
+        font-family: var(--font-display);
+        font-size: 26px;
+        margin-bottom: 8px;
+      }
+      .profile-subtitle {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 28px;
+        font-weight: 300;
+      }
+      .profile-attrs {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .profile-attr {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .profile-attr-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      .profile-attr-value {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      /* ─── TECH SPEC STRIP ─── */
+      .tech-strip {
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 80px 48px;
+        margin: 0;
+      }
+      .tech-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .tech-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 48px;
+        margin-top: 60px;
+      }
+      .tech-item-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+      .tech-item-value {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        color: var(--text-primary);
+        line-height: 1.7;
+      }
+      .tech-item-note {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+        font-weight: 300;
+      }
+
+      /* ─── CLI PREVIEW ─── */
+      .cli-section {
+        padding: 140px 48px;
+        max-width: 1280px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 80px;
+        align-items: center;
+      }
+      .cli-window {
+        background: #0d0d10;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        line-height: 1.8;
+      }
+      .cli-titlebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border);
+      }
+      .cli-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      .cli-dot:nth-child(1) {
+        background: #ff5f56;
+      }
+      .cli-dot:nth-child(2) {
+        background: #ffbd2e;
+      }
+      .cli-dot:nth-child(3) {
+        background: #27c93f;
+      }
+      .cli-body {
+        padding: 24px;
+        overflow: hidden;
+      }
+      .cli-line {
+        white-space: nowrap;
+        opacity: 0;
+        animation: typeIn 0.4s ease forwards;
+      }
+      .cli-prompt {
+        color: var(--green);
+      }
+      .cli-cmd {
+        color: var(--text-primary);
+      }
+      .cli-flag {
+        color: var(--blue);
+      }
+      .cli-output {
+        color: var(--text-muted);
+      }
+      .cli-highlight {
+        color: var(--accent);
+      }
+      .cli-success {
+        color: var(--green);
+      }
+      @keyframes typeIn {
+        from {
+          opacity: 0;
+          transform: translateX(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      /* ─── TESTIMONIAL / QUOTE ─── */
+      .quote-section {
+        padding: 160px 48px;
+        max-width: 900px;
+        margin: 0 auto;
+        text-align: center;
+      }
+      .quote-mark {
+        font-family: var(--font-display);
+        font-size: 80px;
+        color: var(--accent);
+        line-height: 1;
+        margin-bottom: 24px;
+        opacity: 0.5;
+      }
+      .quote-text {
+        font-family: var(--font-display);
+        font-size: clamp(24px, 3.5vw, 38px);
+        font-weight: 400;
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+        margin-bottom: 32px;
+        font-style: italic;
+        color: var(--text-secondary);
+      }
+      .quote-author {
+        font-size: 14px;
+        color: var(--text-muted);
+        font-weight: 300;
+      }
+
+      /* ─── CTA SECTION ─── */
+      .cta-section {
+        padding: 160px 48px;
+        text-align: center;
+        position: relative;
+      }
+      .cta-section::before {
+        content: "";
+        position: absolute;
+        bottom: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          ellipse,
+          rgba(232, 86, 58, 0.05) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+      .cta-title {
+        font-family: var(--font-display);
+        font-size: clamp(40px, 5vw, 64px);
+        font-weight: 400;
+        line-height: 1.1;
+        letter-spacing: -0.025em;
+        margin-bottom: 24px;
+      }
+      .cta-desc {
+        font-size: 17px;
+        line-height: 1.7;
+        color: var(--text-secondary);
+        max-width: 500px;
+        margin: 0 auto 48px;
+        font-weight: 300;
+      }
+      .cta-actions {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        margin-bottom: 48px;
+      }
+      .cta-note {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 300;
+      }
+
+      /* ─── FOOTER ─── */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 48px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .footer-brand {
+        font-family: var(--font-display);
+        font-size: 18px;
+        color: var(--text-muted);
+      }
+      .footer-links {
+        display: flex;
+        gap: 32px;
+      }
+      .footer-links a {
+        font-size: 13px;
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+      .footer-links a:hover {
+        color: var(--text-secondary);
+      }
+
+      /* ─── RESPONSIVE ─── */
+      @media (max-width: 900px) {
+        nav {
+          padding: 16px 24px;
+        }
+        .nav-links {
+          display: none;
+        }
+        .hero {
+          padding: 120px 24px 80px;
+        }
+        .section,
+        .pipeline-wrap,
+        .delivery-demo-section,
+        .profiles-section {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+        .pipeline {
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        .pipeline::before {
+          display: none;
+        }
+        .features-grid {
+          grid-template-columns: 1fr;
+        }
+        .profiles-grid {
+          grid-template-columns: 1fr;
+        }
+        .tech-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .cli-section {
+          grid-template-columns: 1fr;
+          gap: 48px;
+        }
+        .segment-card {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        footer {
+          flex-direction: column;
+          gap: 24px;
+        }
+      }
+
+      /* ─── PRINT ─── */
+      @media print {
+        body::before {
+          display: none;
+        }
+        nav {
+          display: none;
+        }
+        .hero {
+          min-height: auto;
+          padding: 48px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAV -->
+    <nav id="nav">
+      <a href="#" class="nav-logo">Plotline<span>.</span></a>
+      <div class="nav-links">
+        <a href="#pipeline">Pipeline</a>
+        <a href="#features">Features</a>
+        <a href="#profiles">Profiles</a>
+        <a href="#tech">Tech</a>
+        <a href="https://github.com/mwarf/plotline" class="nav-cta"
+          >View on GitHub</a
+        >
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="reveal">
+        <div class="hero-badge">Open Source · v0.1.0</div>
+      </div>
+      <h1 class="reveal reveal-delay-1">
+        From <em>interview</em><br />to timeline
+      </h1>
+      <p class="hero-sub reveal reveal-delay-2">
+        AI-assisted editorial intelligence for documentary and brand filmmakers.
+        Transcribe, analyze emotional delivery, build narrative arcs, and export
+        to DaVinci Resolve — all running locally on your machine.
+      </p>
+      <div class="hero-actions reveal reveal-delay-3">
+        <a href="https://github.com/mwarf/plotline" class="btn-primary"
+          >View on GitHub →</a
+        >
+        <a href="#pipeline" class="btn-secondary">See the Pipeline</a>
+      </div>
+      <div class="hero-scroll">
+        Scroll
+        <div class="hero-scroll-line"></div>
+      </div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section class="pipeline-wrap" id="pipeline">
+      <div class="reveal">
+        <div class="section-label">The Pipeline</div>
+        <div class="section-title">
+          Six stages from raw footage to rough cut
+        </div>
+        <div class="section-desc">
+          Each stage runs independently. Re-run any step without reprocessing
+          what came before. All intermediate data is JSON — inspectable,
+          editable, yours.
+        </div>
+      </div>
+      <div class="pipeline">
+        <div class="pipeline-step reveal reveal-delay-1">
+          <div class="pipeline-node">🎬</div>
+          <div class="pipeline-step-label">Extract</div>
+          <div class="pipeline-step-desc">
+            Audio + metadata from any video format
+          </div>
+        </div>
+        <div class="pipeline-step reveal reveal-delay-2">
+          <div class="pipeline-node">📝</div>
+          <div class="pipeline-step-label">Transcribe</div>
+          <div class="pipeline-step-desc">
+            Word-level timestamps via mlx-whisper
+          </div>
+        </div>
+        <div class="pipeline-step reveal reveal-delay-3">
+          <div class="pipeline-node">🎭</div>
+          <div class="pipeline-step-label">Analyze</div>
+          <div class="pipeline-step-desc">
+            Energy, pitch, pace, pauses — how it was said
+          </div>
+        </div>
+        <div class="pipeline-step reveal reveal-delay-4">
+          <div class="pipeline-node">🧠</div>
+          <div class="pipeline-step-label">Themes</div>
+          <div class="pipeline-step-desc">
+            LLM extracts themes across all interviews
+          </div>
+        </div>
+        <div class="pipeline-step reveal reveal-delay-5">
+          <div class="pipeline-node">📐</div>
+          <div class="pipeline-step-label">Arc</div>
+          <div class="pipeline-step-desc">
+            Narrative structure with editorial reasoning
+          </div>
+        </div>
+        <div class="pipeline-step reveal" style="transition-delay: 0.6s">
+          <div class="pipeline-node">🎞️</div>
+          <div class="pipeline-step-label">Export</div>
+          <div class="pipeline-step-desc">
+            EDL / FCPXML straight into Resolve
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DELIVERY VISUALIZATION -->
+    <section class="delivery-demo-section" id="delivery">
+      <div class="reveal">
+        <div class="section-label">Core Differentiator</div>
+        <div class="section-title">
+          It's not just what they said. It's how they said it.
+        </div>
+        <div class="section-desc">
+          Plotline analyzes the audio alongside the transcript — energy, pitch
+          variation, speech rate, pauses. The moments that give you chills? Now
+          they have a score.
+        </div>
+      </div>
+      <div class="delivery-demo reveal reveal-delay-2">
+        <div class="delivery-header">
+          <div class="delivery-title">Interview 03 — Delivery Analysis</div>
+          <div class="delivery-legend">
+            <div class="delivery-legend-item">
+              <div
+                class="delivery-legend-dot"
+                style="background: var(--blue)"
+              ></div>
+              Energy
+            </div>
+            <div class="delivery-legend-item">
+              <div
+                class="delivery-legend-dot"
+                style="background: var(--accent)"
+              ></div>
+              Speech Rate
+            </div>
+            <div class="delivery-legend-item">
+              <div
+                class="delivery-legend-dot"
+                style="background: var(--violet)"
+              ></div>
+              Pause
+            </div>
+          </div>
+        </div>
+        <div class="delivery-waveform" id="waveform"></div>
+        <div class="delivery-timecodes">
+          <span>00:00:00</span>
+          <span>00:12:30</span>
+          <span>00:25:00</span>
+          <span>00:37:30</span>
+          <span>00:50:00</span>
+        </div>
+        <div class="delivery-segments">
+          <div class="segment-card highlight">
+            <div class="segment-tc">00:18:33.200</div>
+            <div class="segment-text">
+              <em>"That was the last time I saw her at the river."</em> — Voice
+              drops, 2.8s pause before. Delivery: quiet, deliberate, weighted.
+            </div>
+            <div class="delivery-badge">
+              <div
+                class="delivery-bar"
+                style="height: 8px; background: var(--blue)"
+              ></div>
+              <div
+                class="delivery-bar"
+                style="height: 5px; background: var(--accent)"
+              ></div>
+              <div
+                class="delivery-bar"
+                style="height: 22px; background: var(--violet)"
+              ></div>
+            </div>
+          </div>
+          <div class="segment-card">
+            <div class="segment-tc">00:31:07.440</div>
+            <div class="segment-text">
+              <em>"Now I bring my own grandchildren every morning."</em> —
+              Energy rises, pitch lifts. Delivery: warm, purposeful, hope.
+            </div>
+            <div class="delivery-badge">
+              <div
+                class="delivery-bar"
+                style="height: 20px; background: var(--blue)"
+              ></div>
+              <div
+                class="delivery-bar"
+                style="height: 16px; background: var(--accent)"
+              ></div>
+              <div
+                class="delivery-bar"
+                style="height: 6px; background: var(--violet)"
+              ></div>
+            </div>
+          </div>
+          <div class="segment-card">
+            <div class="segment-tc">00:42:15.880</div>
+            <div class="segment-text">
+              <em
+                >"The water remembers everything. That's what she taught
+                us."</em
+              >
+              — Measured pace, rising conviction. Full circle moment.
+            </div>
+            <div class="delivery-badge">
+              <div
+                class="delivery-bar"
+                style="height: 14px; background: var(--blue)"
+              ></div>
+              <div
+                class="delivery-bar"
+                style="height: 9px; background: var(--accent)"
+              ></div>
+              <div
+                class="delivery-bar"
+                style="height: 12px; background: var(--violet)"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section" id="features">
+      <div class="reveal">
+        <div class="section-label">Features</div>
+        <div class="section-title">Built for how editors actually work</div>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card reveal reveal-delay-1">
+          <span class="feature-icon">🔒</span>
+          <div class="feature-label">Privacy</div>
+          <div class="feature-name">Local-first. Always.</div>
+          <div class="feature-desc">
+            Transcription and audio analysis run entirely on your machine. Your
+            audio never leaves your SSD. Cloud LLMs are optional — and only for
+            projects where you choose to allow it.
+          </div>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <span class="feature-icon">🔄</span>
+          <div class="feature-label">Cross-Interview</div>
+          <div class="feature-name">Find the thread across voices</div>
+          <div class="feature-desc">
+            When five people talk about the same thing, Plotline finds the
+            connections. Shared themes, complementary perspectives,
+            contradictions — surfaced automatically across all interviews in
+            your project.
+          </div>
+        </div>
+        <div class="feature-card reveal reveal-delay-3">
+          <span class="feature-icon">📋</span>
+          <div class="feature-label">Creative Brief</div>
+          <div class="feature-name">Brief in, selects out</div>
+          <div class="feature-desc">
+            Feed in your key messages, audience, and tone direction. Plotline
+            evaluates every segment against your brief and shows you a coverage
+            matrix — what's covered, what's weak, what's missing.
+          </div>
+        </div>
+        <div class="feature-card reveal reveal-delay-4">
+          <span class="feature-icon">⚖️</span>
+          <div class="feature-label">Best Take</div>
+          <div class="feature-name">Who said it best?</div>
+          <div class="feature-desc">
+            When multiple speakers address the same message, Plotline ranks
+            their versions by delivery quality, content alignment, and
+            conciseness. Side-by-side comparison with audio playback. You pick
+            the winner.
+          </div>
+        </div>
+        <div class="feature-card reveal reveal-delay-1">
+          <span class="feature-icon">✏️</span>
+          <div class="feature-label">Your Prompts</div>
+          <div class="feature-name">The editorial intelligence is yours</div>
+          <div class="feature-desc">
+            Theme extraction, narrative structure, selection criteria — all
+            controlled through editable prompt templates. Change how Plotline
+            thinks about story without touching code. Your editorial judgment,
+            amplified.
+          </div>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <span class="feature-icon">✅</span>
+          <div class="feature-label">Review Gate</div>
+          <div class="feature-name">Nothing hits the timeline without you</div>
+          <div class="feature-desc">
+            Approve, reject, reorder, annotate. Listen to every segment with
+            audio playback. Keyboard-driven review: arrow down, spacebar, A to
+            approve, X to reject. 60 segments in 10 minutes.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILES -->
+    <section class="profiles-section" id="profiles">
+      <div class="reveal">
+        <div class="section-label">Project Profiles</div>
+        <div class="section-title">One tool, three modes</div>
+        <div class="section-desc">
+          Each profile configures the entire pipeline — delivery weights, prompt
+          templates, narrative structures, privacy settings — in a single
+          selection.
+        </div>
+      </div>
+      <div class="profiles-grid">
+        <div class="profile-card reveal reveal-delay-1">
+          <div class="profile-name">Documentary</div>
+          <div class="profile-subtitle">
+            Emotional depth. Authentic moments. Cultural sensitivity.
+          </div>
+          <div class="profile-attrs">
+            <div class="profile-attr">
+              <div class="profile-attr-label">Selects for</div>
+              <div class="profile-attr-value">
+                Emotional weight, thematic resonance, pauses that carry meaning
+              </div>
+            </div>
+            <div class="profile-attr">
+              <div class="profile-attr-label">Narrative</div>
+              <div class="profile-attr-value">
+                Emergent — arc follows the material, not a template
+              </div>
+            </div>
+            <div class="profile-attr">
+              <div class="profile-attr-label">Privacy</div>
+              <div class="profile-attr-value">
+                Local only. Cultural content flagging available.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="profile-card reveal reveal-delay-2">
+          <div class="profile-name">Brand</div>
+          <div class="profile-subtitle">
+            Message clarity. Stakeholder alignment. Brief discipline.
+          </div>
+          <div class="profile-attrs">
+            <div class="profile-attr">
+              <div class="profile-attr-label">Selects for</div>
+              <div class="profile-attr-value">
+                Clarity, confidence, conciseness, alignment with creative brief
+              </div>
+            </div>
+            <div class="profile-attr">
+              <div class="profile-attr-label">Narrative</div>
+              <div class="profile-attr-value">
+                Brief-driven — structure follows brand pillars and key messages
+              </div>
+            </div>
+            <div class="profile-attr">
+              <div class="profile-attr-label">Privacy</div>
+              <div class="profile-attr-value">
+                Cloud LLMs enabled for faster, higher-quality analysis
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="profile-card reveal reveal-delay-3">
+          <div class="profile-name">Commercial Doc</div>
+          <div class="profile-subtitle">
+            Real stories. Real people. Real marketing framework.
+          </div>
+          <div class="profile-attrs">
+            <div class="profile-attr">
+              <div class="profile-attr-label">Selects for</div>
+              <div class="profile-attr-value">
+                Authenticity balanced with message discipline and tone alignment
+              </div>
+            </div>
+            <div class="profile-attr">
+              <div class="profile-attr-label">Narrative</div>
+              <div class="profile-attr-value">
+                Hybrid — emergent themes shaped by messaging requirements
+              </div>
+            </div>
+            <div class="profile-attr">
+              <div class="profile-attr-label">Privacy</div>
+              <div class="profile-attr-value">
+                Project-dependent. You choose per engagement.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TECH STRIP -->
+    <section class="tech-strip" id="tech">
+      <div class="tech-inner">
+        <div class="reveal">
+          <div class="section-label">Under the Hood</div>
+          <div class="section-title">Built for Apple Silicon</div>
+        </div>
+        <div class="tech-grid">
+          <div class="reveal reveal-delay-1">
+            <div class="tech-item-label">Transcription</div>
+            <div class="tech-item-value">mlx-whisper</div>
+            <div class="tech-item-note">
+              Native M-series Neural Engine. 60-min interview in under 4
+              minutes.
+            </div>
+          </div>
+          <div class="reveal reveal-delay-2">
+            <div class="tech-item-label">Audio Analysis</div>
+            <div class="tech-item-value">librosa + numpy</div>
+            <div class="tech-item-note">
+              RMS energy, pitch contour, speech rate, spectral features.
+            </div>
+          </div>
+          <div class="reveal reveal-delay-3">
+            <div class="tech-item-label">LLM Layer</div>
+            <div class="tech-item-value">Ollama / Claude</div>
+            <div class="tech-item-note">
+              Local 70B models or cloud API. litellm unified interface.
+            </div>
+          </div>
+          <div class="reveal reveal-delay-4">
+            <div class="tech-item-label">Timeline Export</div>
+            <div class="tech-item-value">EDL / FCPXML</div>
+            <div class="tech-item-note">
+              Frame-accurate. DaVinci Resolve Studio native import.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLI PREVIEW -->
+    <section class="cli-section">
+      <div>
+        <div class="reveal">
+          <div class="section-label">Workflow</div>
+          <div class="section-title">Command line at the core</div>
+          <div class="section-desc" style="margin-top: 16px">
+            Every pipeline stage is one command. Run them individually, or let
+            <code
+              style="
+                font-family: var(--font-mono);
+                color: var(--accent);
+                font-size: 14px;
+              "
+              >plotline run</code
+            >
+            handle the full sequence. HTML reports open in your browser for
+            review.
+          </div>
+        </div>
+      </div>
+      <div class="cli-window reveal reveal-delay-2">
+        <div class="cli-titlebar">
+          <div class="cli-dot"></div>
+          <div class="cli-dot"></div>
+          <div class="cli-dot"></div>
+        </div>
+        <div class="cli-body" id="cli-body">
+          <div class="cli-line" style="animation-delay: 0.2s">
+            <span class="cli-prompt">$ </span
+            ><span class="cli-cmd">plotline init elder-series</span>
+            <span class="cli-flag">--profile documentary</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 0.5s">
+            <span class="cli-output"
+              >✓ Project created with documentary profile</span
+            >
+          </div>
+          <div class="cli-line" style="animation-delay: 0.9s">&nbsp;</div>
+          <div class="cli-line" style="animation-delay: 1.2s">
+            <span class="cli-prompt">$ </span
+            ><span class="cli-cmd">plotline add</span>
+            <span class="cli-flag">interviews/*.mov</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 1.5s">
+            <span class="cli-output">✓ 6 interviews added (4h 12m total)</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 1.9s">&nbsp;</div>
+          <div class="cli-line" style="animation-delay: 2.2s">
+            <span class="cli-prompt">$ </span
+            ><span class="cli-cmd">plotline run</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 2.5s">
+            <span class="cli-output"> Transcribing .......... </span
+            ><span class="cli-success">done</span>
+            <span class="cli-output">(18m 34s)</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 2.8s">
+            <span class="cli-output"> Analyzing audio ....... </span
+            ><span class="cli-success">done</span>
+            <span class="cli-output">(6m 12s)</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 3.1s">
+            <span class="cli-output"> Extracting themes ..... </span
+            ><span class="cli-success">done</span>
+            <span class="cli-output">(8m 47s)</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 3.4s">
+            <span class="cli-output"> Cross-referencing ..... </span
+            ><span class="cli-success">done</span>
+            <span class="cli-output">(3m 22s)</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 3.7s">
+            <span class="cli-output"> Building arc .......... </span
+            ><span class="cli-success">done</span>
+            <span class="cli-output">(5m 11s)</span>
+          </div>
+          <div class="cli-line" style="animation-delay: 4.1s">&nbsp;</div>
+          <div class="cli-line" style="animation-delay: 4.4s">
+            <span class="cli-highlight">
+              → 47 segments selected across 4 themes</span
+            >
+          </div>
+          <div class="cli-line" style="animation-delay: 4.7s">
+            <span class="cli-highlight">
+              → Review report: open in browser? (Y/n)</span
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUOTE -->
+    <section class="quote-section">
+      <div class="reveal">
+        <div class="quote-mark">"</div>
+        <div class="quote-text">
+          The gap between watching ten hours of interviews and building a
+          ten-minute story is where documentary lives. Plotline doesn't close
+          that gap — it illuminates it.
+        </div>
+        <div class="quote-author">Built by a filmmaker, for filmmakers</div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section" id="cta">
+      <div class="reveal">
+        <div class="cta-title">Stop scrubbing.<br />Start cutting.</div>
+        <p class="cta-desc">
+          Plotline is free and open source. Clone the repo and start
+          transcribing your interviews in minutes.
+        </p>
+        <div class="cta-actions">
+          <a href="https://github.com/mwarf/plotline" class="btn-primary"
+            >View on GitHub →</a
+          >
+          <a
+            href="https://github.com/mwarf/plotline#readme"
+            class="btn-secondary"
+            >Read the Docs</a
+          >
+        </div>
+        <p class="cta-note">
+          Free and open source. Python. Local-first. Your footage stays on your
+          machine.
+        </p>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-brand">Plotline</div>
+      <div class="footer-links">
+        <a href="https://github.com/mwarf/plotline">GitHub</a>
+        <a href="https://github.com/mwarf/plotline#readme">Documentation</a>
+      </div>
+    </footer>
+
+    <script>
+      // ─── SCROLL REVEAL ───
+      const reveals = document.querySelectorAll(".reveal");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+            }
+          });
+        },
+        { threshold: 0.15, rootMargin: "0px 0px -60px 0px" },
+      );
+      reveals.forEach((el) => observer.observe(el));
+
+      // ─── NAV SCROLL ───
+      window.addEventListener("scroll", () => {
+        document
+          .getElementById("nav")
+          .classList.toggle("scrolled", window.scrollY > 60);
+      });
+
+      // ─── WAVEFORM GENERATION ───
+      const waveform = document.getElementById("waveform");
+      const barCount = 120;
+      const data = [];
+
+      // Generate realistic interview energy pattern
+      for (let i = 0; i < barCount; i++) {
+        const t = i / barCount;
+        // Base energy with natural speech patterns
+        let energy =
+          0.3 +
+          Math.sin(t * 8) * 0.15 +
+          Math.sin(t * 23) * 0.1 +
+          Math.random() * 0.15;
+        // Quiet reflective section around 35-42%
+        if (t > 0.35 && t < 0.42) energy *= 0.4;
+        // Energy build toward end
+        if (t > 0.6) energy += (t - 0.6) * 0.5;
+        // Speech rate (correlates loosely)
+        let rate = 0.4 + Math.sin(t * 12 + 1) * 0.2 + Math.random() * 0.1;
+        if (t > 0.35 && t < 0.42) rate *= 0.5; // slow during reflective section
+
+        data.push({
+          energy: Math.max(0.05, Math.min(1, energy)),
+          rate: Math.max(0.1, Math.min(1, rate)),
+        });
+      }
+
+      data.forEach((d, i) => {
+        const bar = document.createElement("div");
+        bar.className = "wave-bar";
+        const height = d.energy * 110 + 4;
+        // Color blend: blue (slow) to orange (fast)
+        const r = Math.round(74 + d.rate * 158);
+        const g = Math.round(143 - d.rate * 50);
+        const b = Math.round(231 - d.rate * 185);
+        bar.style.height = height + "px";
+        bar.style.background = `rgb(${r}, ${g}, ${b})`;
+        bar.style.opacity = 0.7 + d.energy * 0.3;
+
+        // Mark the pause section
+        if (i / barCount > 0.35 && i / barCount < 0.42) {
+          bar.style.opacity = "0.4";
+        }
+
+        waveform.appendChild(bar);
+      });
+
+      // ─── CLI ANIMATION RETRIGGER ───
+      const cliObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const lines = entry.target.querySelectorAll(".cli-line");
+              lines.forEach((line) => {
+                line.style.animation = "none";
+                line.offsetHeight; // force reflow
+                line.style.animation = "";
+              });
+            }
+          });
+        },
+        { threshold: 0.3 },
+      );
+      cliObserver.observe(document.getElementById("cli-body"));
+    </script>
+  </body>
+</html>
