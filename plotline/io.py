@@ -48,8 +48,12 @@ def write_json(path: Path, data: dict[str, Any], indent: int = 2) -> None:
         delete=False,
         suffix=".tmp",
     ) as tmp:
-        json.dump(data, tmp, indent=indent, ensure_ascii=False)
         tmp_path = Path(tmp.name)
+        try:
+            json.dump(data, tmp, indent=indent, ensure_ascii=False)
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
     tmp_path.rename(path)
 
 
@@ -81,6 +85,10 @@ def write_text(path: Path, content: str) -> None:
         delete=False,
         suffix=".tmp",
     ) as tmp:
-        tmp.write(content)
         tmp_path = Path(tmp.name)
+        try:
+            tmp.write(content)
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
     tmp_path.rename(path)

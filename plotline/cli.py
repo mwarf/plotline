@@ -57,14 +57,21 @@ def main(
     version: bool = typer.Option(
         False,
         "--version",
-        "-v",
+        "-V",
         help="Show version and exit",
         callback=version_callback,
         is_eager=True,
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Enable debug logging",
+    ),
 ) -> None:
     """Plotline - AI-assisted documentary editing toolkit."""
-    pass
+    from plotline.logging import configure_logging
+
+    configure_logging(verbose)
 
 
 # Phase 0: Project Management

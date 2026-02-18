@@ -96,7 +96,7 @@ def check_disk_space(path: Path, required_mb: int) -> dict[str, Any]:
             "sufficient": available_mb >= required_mb,
         }
     except OSError as e:
-        raise ValidationError(f"Cannot check disk space: {e}")
+        raise ValidationError(f"Cannot check disk space: {e}") from e
 
 
 def estimate_audio_size(duration_seconds: float, sample_rate: int = 16000) -> int:

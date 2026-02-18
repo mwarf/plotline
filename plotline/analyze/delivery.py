@@ -119,7 +119,10 @@ def _extract_pitch(audio: np.ndarray, sr: int) -> tuple[float, float, list[float
 
         return pitch_mean, pitch_std, pitch_contour
 
-    except Exception:
+    except Exception as e:
+        from plotline.logging import logger
+
+        logger.debug("Failed to extract pitch features: %s", e)
         return 0.0, 0.0, []
 
 
@@ -130,7 +133,10 @@ def _extract_spectral_centroid(audio: np.ndarray, sr: int) -> float:
     try:
         centroids = librosa.feature.spectral_centroid(y=audio, sr=sr)
         return float(np.mean(centroids))
-    except Exception:
+    except Exception as e:
+        from plotline.logging import logger
+
+        logger.debug("Failed to extract spectral centroid: %s", e)
         return 0.0
 
 
@@ -141,7 +147,10 @@ def _extract_zero_crossing_rate(audio: np.ndarray, sr: int) -> float:
     try:
         zcr = librosa.feature.zero_crossing_rate(audio)
         return float(np.mean(zcr))
-    except Exception:
+    except Exception as e:
+        from plotline.logging import logger
+
+        logger.debug("Failed to extract zero crossing rate: %s", e)
         return 0.0
 
 
@@ -170,7 +179,7 @@ def analyze_interview_delivery(
     try:
         audio, sr = librosa.load(str(audio_path), sr=None)
     except Exception as e:
-        raise AnalysisError(f"Failed to load audio: {e}")
+        raise AnalysisError(f"Failed to load audio: {e}") from e
 
     segments = transcript.get("segments", [])
     delivery_segments = []
