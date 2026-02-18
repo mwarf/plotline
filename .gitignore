@@ -65,6 +65,10 @@ Thumbs.db
 *.temp
 *.log
 
+# Environment files (may contain API keys)
+.env
+.env.*
+
 # Planning artifacts (not part of the distributed project)
 Plotline_PRD_v1.3.docx
 plotline-build-plan.md

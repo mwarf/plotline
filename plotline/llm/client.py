@@ -39,9 +39,9 @@ class LLMClient:
         elif self.backend == "lmstudio":
             return f"openai/{self.model}"
         elif self.backend == "claude":
-            return "claude-3-sonnet-20240229"
+            return f"claude-{self.model}"
         elif self.backend == "openai":
-            return "gpt-4-turbo-preview"
+            return self.model
         return self.model
 
     def _check_privacy(self) -> None:
@@ -85,6 +85,8 @@ class LLMClient:
         except ImportError as e:
             raise LLMError("litellm not installed. Install with: pip install litellm") from e
 
+        litellm.telemetry = False
+
         model = self._get_model_string()
         last_error = None
 
@@ -95,6 +97,8 @@ class LLMClient:
             try:
                 if self.backend == "ollama":
                     litellm.api_base = "http://localhost:11434"
+                elif self.backend == "lmstudio":
+                    litellm.api_base = "http://localhost:1234/v1"
 
                 response = litellm.completion(
                     model=model,
