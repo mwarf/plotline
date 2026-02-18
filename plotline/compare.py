@@ -12,6 +12,7 @@ from typing import Any
 
 from plotline.analyze.scoring import compute_composite_score, normalize_metrics
 from plotline.project import read_json
+from plotline.utils import get_delivery_class
 
 
 def collect_all_segments(
@@ -93,15 +94,6 @@ def normalize_scores_cross_interview(
             cross_scores[seg_id] = score
 
     return cross_scores
-
-
-def get_delivery_class(score: float) -> str:
-    """Get CSS class for delivery score."""
-    if score >= 0.7:
-        return "filled"
-    elif score >= 0.4:
-        return "medium"
-    return "low"
 
 
 def build_comparison_groups(

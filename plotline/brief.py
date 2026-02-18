@@ -174,6 +174,9 @@ def save_brief(brief: dict[str, Any], output_path: Path) -> None:
         brief: Parsed brief dict
         output_path: Path to save JSON
     """
+    from datetime import datetime, timezone
+
     from plotline.io import write_json
 
+    brief["parsed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     write_json(output_path, brief)

@@ -21,6 +21,7 @@ from plotline.project import (
     generate_interview_id,
     probe_video,
 )
+from plotline.utils import format_duration
 
 app = typer.Typer(
     name="plotline",
@@ -43,16 +44,6 @@ def find_project_dir() -> Path | None:
             return current
         current = current.parent
     return None
-
-
-def format_duration(seconds: float) -> str:
-    """Format seconds as HH:MM:SS."""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    if hours > 0:
-        return f"{hours}:{minutes:02d}:{secs:02d}"
-    return f"{minutes}:{secs:02d}"
 
 
 def version_callback(value: bool) -> None:

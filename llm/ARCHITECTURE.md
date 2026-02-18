@@ -419,6 +419,19 @@ This is the merge of transcript + delivery. It's the primary input for LLM analy
       "pacing": "Hold the transition. The slowdown IS the signal.",
       "brief_message": null
     }
+  ],
+  "coverage_gaps": [
+    {
+      "message_id": "msg_002",
+      "reason": "No segments directly address this key message"
+    }
+  ],
+  "alternate_candidates": [
+    {
+      "for_position": 3,
+      "segment_id": "interview_002_seg_018",
+      "reasoning": "Strong alternative if editor wants a different voice here"
+    }
   ]
 }
 ```
@@ -431,6 +444,8 @@ This is the merge of transcript + delivery. It's the primary input for LLM analy
 - `pacing` is specific editorial guidance for the editor
 - `brief_message` maps to a key message ID (brand/commercial profiles only)
 - `estimated_duration_seconds` should be close to `target_duration_seconds`
+- `coverage_gaps` identifies key messages from the brief that lack segment coverage
+- `alternate_candidates` provides backup segment options for each position
 
 ---
 
@@ -527,19 +542,27 @@ Written by the review report HTML. Read by the export stage.
 ```json
 {
   "source_file": "creative_brief.md",
-  "parsed_at": "2026-02-15T10:45:00",
+  "parsed_at": "2026-02-15T10:45:00+00:00",
+  "name": "Project Brief",
   "key_messages": [
     { "id": "msg_001", "text": "The company is investing in the next generation of workers" },
     { "id": "msg_002", "text": "Innovation comes from diverse perspectives" },
     { "id": "msg_003", "text": "Community roots drive global ambition" }
   ],
   "audience": "Prospective talent, age 22-35, considering relocation to Southern Alberta",
-  "target_duration_seconds": 180,
+  "target_duration": "3-5 minutes",
   "tone_direction": "Warm, grounded, authentic — not corporate polish",
-  "must_include": ["employee testimonials", "community involvement"],
-  "avoid": ["salary figures", "competitor mentions"]
+  "must_include_topics": ["employee testimonials", "community involvement"],
+  "avoid_topics": ["salary figures", "competitor mentions"]
 }
 ```
+
+**Rules:**
+- `parsed_at` is an ISO 8601 timestamp with timezone (UTC)
+- `name` is derived from filename or first heading in Markdown
+- `key_messages` are normalized to `{id, text}` objects by `normalize_key_messages()`
+- `target_duration` is a freeform string (e.g., "3-5 minutes", "180 seconds")
+- Field names use snake_case consistently (both Markdown and YAML briefs are normalized)
 
 ---
 

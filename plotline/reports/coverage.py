@@ -13,22 +13,7 @@ from typing import Any
 from plotline.export.timecode import seconds_to_timecode
 from plotline.project import read_json
 from plotline.reports.generator import ReportGenerator
-
-
-def format_duration(seconds: float) -> str:
-    """Format seconds as MM:SS."""
-    minutes = int(seconds // 60)
-    secs = int(seconds % 60)
-    return f"{minutes}:{secs:02d}"
-
-
-def get_delivery_class(score: float) -> str:
-    """Get CSS class for delivery score."""
-    if score >= 0.7:
-        return "filled"
-    elif score >= 0.4:
-        return "medium"
-    return "low"
+from plotline.utils import format_duration, get_delivery_class
 
 
 def build_theme_alignment_map(

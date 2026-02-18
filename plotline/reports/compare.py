@@ -12,13 +12,7 @@ from typing import Any
 from plotline.compare import run_compare
 from plotline.export.timecode import seconds_to_timecode
 from plotline.reports.generator import ReportGenerator
-
-
-def format_duration(seconds: float) -> str:
-    """Format seconds as MM:SS."""
-    minutes = int(seconds // 60)
-    secs = int(seconds % 60)
-    return f"{minutes}:{secs:02d}"
+from plotline.utils import format_duration
 
 
 def generate_compare_report(
