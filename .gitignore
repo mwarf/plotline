@@ -64,3 +64,8 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# Planning artifacts (not part of the distributed project)
+Plotline_PRD_v1.3.docx
+plotline-build-plan.md
+plotline-landing-page.html

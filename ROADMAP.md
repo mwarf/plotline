@@ -4,14 +4,14 @@ This document outlines planned features and enhancements for future releases.
 
 ## v0.2.0 — Polish & Gaps
 
-Target: Q2 2025
+Released: 2026-02-17
 
-| Feature              | Description                                                                                                                             | Status  |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `plotline compare`   | Side-by-side best-take comparison across interviews for the same theme/message. Rank candidates by delivery score, show audio playback. | Planned |
-| Transcript Report    | Interactive HTML report with delivery timeline, waveform visualization, and segment breakdown per interview.                            | Planned |
-| Cultural Flags (5.6) | Optional LLM pass to flag potentially sensitive cultural content for documentary ethics review.                                         | Planned |
-| Coverage Matrix      | Visualize how creative brief messages are covered across selected segments. Identify gaps.                                              | Planned |
+| Feature              | Description                                                                                                                             | Status    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `plotline compare`   | Side-by-side best-take comparison across interviews for the same theme/message. Rank candidates by delivery score, show audio playback. | **Done** |
+| Transcript Report    | Interactive HTML report with delivery timeline, waveform visualization, and segment breakdown per interview.                            | **Done** |
+| Cultural Flags (5.6) | Optional LLM pass to flag potentially sensitive cultural content for documentary ethics review.                                         | **Done** |
+| Coverage Matrix      | Visualize how creative brief messages are covered across selected segments. Identify gaps.                                              | **Done** |
 
 ---
 

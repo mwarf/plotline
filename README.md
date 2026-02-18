@@ -83,24 +83,27 @@ plotline export --format edl
 
 ### Pipeline Stages
 
-| Command               | Description                            |
-| --------------------- | -------------------------------------- |
-| `plotline extract`    | Extract audio from videos              |
-| `plotline transcribe` | Transcribe using Whisper               |
-| `plotline analyze`    | Analyze emotional delivery             |
-| `plotline enrich`     | Merge transcript + delivery            |
-| `plotline themes`     | Extract themes (LLM Pass 1)            |
-| `plotline synthesize` | Cross-interview synthesis (LLM Pass 2) |
-| `plotline arc`        | Build narrative arc (LLM Pass 3)       |
-| `plotline run`        | Run full pipeline                      |
+| Command               | Description                                    |
+| --------------------- | ---------------------------------------------- |
+| `plotline extract`    | Extract audio from videos                      |
+| `plotline transcribe` | Transcribe using Whisper                       |
+| `plotline analyze`    | Analyze emotional delivery                     |
+| `plotline enrich`     | Merge transcript + delivery                    |
+| `plotline themes`     | Extract themes (LLM Pass 1)                    |
+| `plotline synthesize` | Cross-interview synthesis (LLM Pass 2)         |
+| `plotline arc`        | Build narrative arc (LLM Pass 3)               |
+| `plotline flags`      | Cultural sensitivity flagging (LLM Pass 4)     |
+| `plotline run`        | Run full pipeline (includes flags if enabled)  |
 
 ### Reports
 
-| Command                     | Description                |
-| --------------------------- | -------------------------- |
-| `plotline report dashboard` | Pipeline status dashboard  |
-| `plotline report review`    | Selection review interface |
-| `plotline report summary`   | Project summary            |
+| Command                       | Description                              |
+| ----------------------------- | ---------------------------------------- |
+| `plotline report dashboard`   | Pipeline status dashboard                |
+| `plotline report review`      | Selection review interface               |
+| `plotline report summary`     | Project summary                          |
+| `plotline report transcript`  | Per-interview transcript with waveform   |
+| `plotline report coverage`    | Brief coverage matrix                    |
 
 ### Export
 
@@ -113,10 +116,11 @@ plotline export --format edl
 
 ### Other
 
-| Command                 | Description                           |
-| ----------------------- | ------------------------------------- |
-| `plotline brief <file>` | Attach creative brief (Markdown/YAML) |
-| `plotline compare`      | Compare best takes (multi-interview)  |
+| Command                 | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `plotline brief <file>` | Attach creative brief (Markdown/YAML)    |
+| `plotline flags`        | Cultural sensitivity flagging (LLM)      |
+| `plotline compare`      | Compare best takes (multi-interview)     |
 
 ## Pipeline Stages
 
@@ -160,13 +164,16 @@ plotline enrich
 
 ### 5. LLM Analysis
 
-Three-pass LLM analysis:
+Four-pass LLM analysis:
 
 | Pass | Command               | Purpose                              |
 | ---- | --------------------- | ------------------------------------ |
 | 1    | `plotline themes`     | Extract themes per interview         |
 | 2    | `plotline synthesize` | Cross-interview theme synthesis      |
 | 3    | `plotline arc`        | Build narrative arc, select segments |
+| 4    | `plotline flags`      | Cultural sensitivity flagging (optional) |
+
+Pass 4 runs automatically in `plotline run` when `cultural_flags: true` is set in config. It can also be run standalone with `plotline flags` (use `--force` to run even when disabled in config).
 
 ### 6. Export
 
@@ -195,6 +202,10 @@ whisper_model: medium
 # Output settings
 target_duration_seconds: 600
 handle_padding_frames: 12
+
+# Cultural sensitivity flagging (default: false)
+# Enabled by default in commercial-doc profile
+cultural_flags: false
 
 # Delivery weights (for scoring)
 delivery_weights:
@@ -256,7 +267,8 @@ project_profile: commercial-doc
 
 - Hybrid of documentary and brand
 - Balanced scoring
-- Best for: Branded documentaries
+- Enables `cultural_flags` by default
+- Best for: Branded documentaries, Indigenous content
 
 ## Creative Briefs
 
@@ -337,6 +349,45 @@ Executive summary with:
 - Narrative arc overview
 - Delivery highlights
 
+### Transcript
+
+```bash
+plotline report transcript --interview interview_001
+```
+
+Per-interview transcript report with:
+
+- Waveform delivery timeline (sticky header)
+- Segment cards with delivery metrics
+- Theme pills on segments
+- Keyboard navigation and audio playback
+
+### Coverage Matrix
+
+```bash
+plotline report coverage
+```
+
+Brief coverage analysis with:
+
+- Message-by-theme coverage grid (strong/weak/gap tiers)
+- Per-message segment cards
+- Progress bar and gap identification
+- Requires a creative brief to be attached
+
+### Compare
+
+```bash
+plotline compare
+```
+
+Cross-interview best-take comparison with:
+
+- Candidate cards ranked by delivery score
+- Audio playback per segment
+- Sort/filter by theme or message
+- Cross-interview score normalization
+
 ## Project Structure
 
 ```
@@ -355,10 +406,10 @@ my-project/
 │   ├── segments/          # Enriched segments
 │   ├── themes/            # Per-interview themes
 │   ├── synthesis.json     # Cross-interview synthesis
-│   └── selections.json    # Arc selections
+│   └── selections.json    # Arc selections (+ cultural flags)
 ├── prompts/               # LLM prompt templates
 ├── reports/               # HTML reports
-└── exports/               # EDL/FCPXML files
+└── export/                # EDL/FCPXML files
 ```
 
 ## Troubleshooting

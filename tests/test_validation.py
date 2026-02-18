@@ -1,14 +1,15 @@
 """Tests for plotline.validation module."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+
+from plotline.exceptions import ValidationError
 from plotline.validation import (
     estimate_audio_size,
     validate_interview_duration,
     validate_video_file,
 )
-from plotline.exceptions import ValidationError, DependencyError
 
 
 class TestEstimateAudioSize:

@@ -127,8 +127,8 @@ class TestEDL:
             interviews=interviews,
         )
 
-        lines = [l for l in edl.split("\n") if l.strip() and not l.startswith("*")]
-        event_lines = [l for l in lines if l[0:3].strip().isdigit()]
+        lines = [line for line in edl.split("\n") if line.strip() and not line.startswith("*")]
+        event_lines = [line for line in lines if line[0:3].strip().isdigit()]
         assert len(event_lines) == 2
 
     def test_generate_edl_drop_frame(self):
