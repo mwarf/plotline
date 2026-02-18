@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project_name }} - Coverage Matrix{% endblock %}
+
+{% block extra_styles %}
+.header-info {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-top: 0.25rem;
+}
+
+.stats-bar {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.stat-value.strong { color: var(--color-success); }
+.stat-value.weak { color: var(--color-warning); }
+.stat-value.gap { color: var(--color-error); }
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.coverage-progress {
+    margin-bottom: 1.5rem;
+}
+
+.coverage-progress-bar {
+    height: 8px;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    display: flex;
+}
+
+.progress-strong {
+    background: var(--color-success);
+    height: 100%;
+}
+
+.progress-weak {
+    background: var(--color-warning);
+    height: 100%;
+}
+
+.progress-gap {
+    background: var(--color-error);
+    height: 100%;
+}
+
+.message-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.message-card.strong {
+    border-left-color: var(--color-success);
+}
+
+.message-card.weak {
+    border-left-color: var(--color-warning);
+}
+
+.message-card.gap {
+    border-left-color: var(--color-error);
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.message-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-icon {
+    font-size: 1.25rem;
+}
+
+.message-id {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.message-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    margin-bottom: 1rem;
+}
+
+.message-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.message-segments {
+    margin-top: 1rem;
+}
+
+.segments-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.segment-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.segment-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.segment-pill:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.segment-pill .score {
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+.segment-pill .score.high { color: var(--color-success); }
+.segment-pill .score.medium { color: var(--color-warning); }
+.segment-pill .score.low { color: var(--color-error); }
+
+.best-take {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+}
+
+.best-take-label {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-right: 0.5rem;
+}
+
+.weak-notice {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    color: var(--color-warning);
+}
+
+.gap-suggestion {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    color: var(--color-error);
+}
+
+.matrix-section {
+    margin-top: 2rem;
+}
+
+.matrix-container {
+    overflow-x: auto;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+}
+
+.matrix-table {
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+.matrix-table th,
+.matrix-table td {
+    padding: 0.5rem;
+    text-align: center;
+    border: 1px solid var(--color-border);
+}
+
+.matrix-table th {
+    background: var(--color-bg-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.matrix-table th.message-header {
+    text-align: left;
+    min-width: 200px;
+}
+
+.matrix-table td.message-label {
+    text-align: left;
+    font-size: 0.8125rem;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.matrix-cell {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.matrix-cell.strong {
+    background: var(--color-success);
+}
+
+.matrix-cell.weak {
+    background: var(--color-warning);
+}
+
+.matrix-cell.none {
+    background: var(--color-bg-tertiary);
+}
+
+.matrix-cell:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.matrix-legend {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-sm);
+}
+
+.legend-dot.strong { background: var(--color-success); }
+.legend-dot.weak { background: var(--color-warning); }
+.legend-dot.none { background: var(--color-bg-tertiary); }
+
+.gaps-section {
+    margin-top: 2rem;
+}
+
+.gaps-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+}
+
+.gaps-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+}
+
+.gap-item {
+    padding: 0.75rem;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    border-left: 3px solid var(--color-error);
+}
+
+.must-include-section {
+    margin-top: 1.5rem;
+}
+
+.must-include-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.must-include-item:last-child {
+    border-bottom: none;
+}
+
+.topic-status {
+    font-size: 1rem;
+}
+
+.section-empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-muted);
+}
+
+.full-coverage {
+    text-align: center;
+    padding: 3rem;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-success);
+}
+
+.full-coverage h2 {
+    color: var(--color-success);
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .stats-bar {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .stat-item {
+        flex: 1;
+        min-width: 80px;
+    }
+    .message-header {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <div>
+        <h1>Coverage Matrix</h1>
+        <div class="header-meta">
+            <span class="badge badge-primary">{{ project_name }}</span>
+            <span class="badge badge-secondary">{{ brief_name }}</span>
+        </div>
+        <div class="header-info">
+            <span>{{ total_messages }} key messages</span>
+            <span>{{ total_segments }} segments selected</span>
+        </div>
+    </div>
+</div>
+
+<div class="stats-bar">
+    <div class="stat-item">
+        <div class="stat-value">{{ total_messages }}</div>
+        <div class="stat-label">Messages</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value strong">{{ strong_count }}</div>
+        <div class="stat-label">Strong</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value weak">{{ weak_count }}</div>
+        <div class="stat-label">Weak</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value gap">{{ gap_count }}</div>
+        <div class="stat-label">Gaps</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">{{ coverage_percent }}%</div>
+        <div class="stat-label">Coverage</div>
+    </div>
+</div>
+
+<div class="coverage-progress">
+    <div class="coverage-progress-bar">
+        <div class="progress-strong" style="width: {{ (strong_count / total_messages * 100) if total_messages > 0 else 0 }}%"></div>
+        <div class="progress-weak" style="width: {{ (weak_count / total_messages * 100) if total_messages > 0 else 0 }}%"></div>
+        <div class="progress-gap" style="width: {{ (gap_count / total_messages * 100) if total_messages > 0 else 0 }}%"></div>
+    </div>
+</div>
+
+{% if gap_count == 0 and weak_count == 0 %}
+<div class="full-coverage">
+    <h2>✓ Full Coverage</h2>
+    <p>All key messages have strong segment coverage</p>
+</div>
+{% endif %}
+
+<section class="messages-section">
+    <h2 style="font-size: 1.125rem; margin-bottom: 1rem;">Message Coverage</h2>
+
+    {% for message in messages %}
+    <div class="message-card {{ message.coverage_level }}">
+        <div class="message-header">
+            <div class="message-status">
+                {% if message.coverage_level == 'strong' %}
+                <span class="status-icon">✅</span>
+                {% elif message.coverage_level == 'weak' %}
+                <span class="status-icon">⚠️</span>
+                {% else %}
+                <span class="status-icon">❌</span>
+                {% endif %}
+                <span class="message-id">{{ message.id }}</span>
+            </div>
+            <div class="message-meta">
+                <span>Coverage: <strong>{{ message.coverage_level.title() }}</strong></span>
+                <span>{{ message.total_count }} segment{{ 's' if message.total_count != 1 else '' }}</span>
+            </div>
+        </div>
+
+        <div class="message-text">"{{ message.text }}"</div>
+
+        {% if message.strong_segments %}
+        <div class="message-segments">
+            <div class="segments-label">Strong matches</div>
+            <div class="segment-pills">
+                {% for seg in message.strong_segments[:5] %}
+                <span class="segment-pill" title="{{ seg.text }}">
+                    {{ seg.interview_id }} · {{ seg.timecode }}
+                    <span class="score {{ seg.delivery_class }}">{{ seg.delivery_score }}</span>
+                </span>
+                {% endfor %}
+                {% if message.strong_segments | length > 5 %}
+                <span class="segment-pill">+{{ message.strong_segments | length - 5 }} more</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if message.weak_segments and not message.strong_segments %}
+        <div class="message-segments">
+            <div class="segments-label">Theme-level matches</div>
+            <div class="segment-pills">
+                {% for seg in message.weak_segments[:3] %}
+                <span class="segment-pill" title="{{ seg.text }}">
+                    {{ seg.interview_id }} · {{ seg.timecode }}
+                    <span class="score {{ seg.delivery_class }}">{{ seg.delivery_score }}</span>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="weak-notice">
+            ⚠️ Only indirect coverage through theme alignment. Consider finding segments that directly address this message.
+        </div>
+        {% endif %}
+
+        {% if message.coverage_level == 'gap' %}
+        <div class="gap-suggestion">
+            ❌ No segments address this message. Review source material for relevant content or consider revising the brief.
+        </div>
+        {% endif %}
+
+        {% if message.best_segment %}
+        <div class="best-take">
+            <span class="best-take-label">Best take:</span>
+            {{ message.best_segment.interview_id }} · {{ message.best_segment.timecode }}
+            (score: {{ message.best_segment.delivery_score }})
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+
+{% if total_segments > 0 and total_messages > 0 %}
+<section class="matrix-section">
+    <h2 style="font-size: 1.125rem; margin-bottom: 1rem;">Coverage Matrix</h2>
+
+    <div class="matrix-container">
+        <table class="matrix-table">
+            <thead>
+                <tr>
+                    <th class="message-header">Message</th>
+                    {% for col in matrix_columns %}
+                    <th title="{{ col.segment_id }}">
+                        {{ col.position }}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in matrix_rows %}
+                <tr>
+                    <td class="message-label" title="{{ row.message_text }}">
+                        {{ row.message_text[:40] }}{% if row.message_text | length > 40 %}...{% endif %}
+                    </td>
+                    {% for cell in row.cells %}
+                    <td>
+                        <div class="matrix-cell {{ cell.value }}"
+                             title="{{ cell.segment_id }}: {{ cell.value }}"
+                             data-segment="{{ cell.segment_id }}"
+                             data-message="{{ row.message_id }}">
+                            {% if cell.value == 'strong' %}●{% elif cell.value == 'weak' %}○{% else %}·{% endif %}
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="matrix-legend">
+        <div class="legend-item">
+            <div class="legend-dot strong"></div>
+            <span>Strong (direct match)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot weak"></div>
+            <span>Weak (theme alignment)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot none"></div>
+            <span>No coverage</span>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% if has_gaps %}
+<section class="gaps-section">
+    <h2 style="font-size: 1.125rem; margin-bottom: 1rem;">LLM Coverage Gaps</h2>
+
+    <div class="gaps-card">
+        <div class="gaps-title">Gaps identified during arc construction:</div>
+        {% for gap in coverage_gaps %}
+        {% if gap is string %}
+        <div class="gap-item">{{ gap }}</div>
+        {% elif gap is mapping %}
+        <div class="gap-item">{{ gap.get('message', gap.get('description', gap)) }}</div>
+        {% else %}
+        <div class="gap-item">{{ gap }}</div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if has_must_include %}
+<section class="must-include-section">
+    <div class="gaps-card">
+        <div class="gaps-title">Must-Include Topics</div>
+        {% for item in must_include_status %}
+        <div class="must-include-item">
+            <span class="topic-status">{% if item.covered %}✅{% else %}❌{% endif %}</span>
+            <span>{{ item.topic }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+document.querySelectorAll('.matrix-cell').forEach(cell => {
+    cell.addEventListener('click', function() {
+        const segment = this.dataset.segment;
+        const message = this.dataset.message;
+        console.log('Segment:', segment, 'Message:', message);
+    });
+});
+{% endblock %}

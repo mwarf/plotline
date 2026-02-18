@@ -13,6 +13,41 @@ from typing import Any
 import yaml
 
 
+def normalize_key_messages(messages: list[Any]) -> list[dict[str, str]]:
+    """Normalize key messages to {id, text} objects.
+
+    Ensures all key messages have consistent structure with id and text fields.
+    Strings are wrapped into objects with auto-generated sequential IDs.
+
+    Args:
+        messages: List of key messages (strings or {id, text} dicts)
+
+    Returns:
+        List of dicts with 'id' and 'text' keys
+    """
+    normalized = []
+    for i, msg in enumerate(messages):
+        if isinstance(msg, str):
+            normalized.append(
+                {
+                    "id": f"msg_{i + 1:03d}",
+                    "text": msg.strip(),
+                }
+            )
+        elif isinstance(msg, dict):
+            text = msg.get("text", "")
+            if msg.get("id"):
+                normalized.append({"id": msg["id"], "text": text})
+            else:
+                normalized.append(
+                    {
+                        "id": f"msg_{i + 1:03d}",
+                        "text": text,
+                    }
+                )
+    return normalized
+
+
 def parse_markdown_brief(content: str) -> dict[str, Any]:
     """Parse a Markdown brief into structured data.
 
@@ -122,6 +157,9 @@ def parse_brief(brief_path: Path) -> dict[str, Any]:
 
     result["source_file"] = str(brief_path)
     result["name"] = result.get("name", brief_path.stem)
+
+    if result.get("key_messages"):
+        result["key_messages"] = normalize_key_messages(result["key_messages"])
 
     if not result.get("key_messages"):
         raise ValueError("Brief must contain at least one key message")
