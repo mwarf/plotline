@@ -720,7 +720,7 @@ def show_status(
 def generate_report(
     report_type: str = typer.Argument(
         "dashboard",
-        help="Report type (dashboard, transcript, review, summary)",
+        help="Report type (dashboard, transcript, review, summary, coverage)",
     ),
     interview: str | None = typer.Option(
         None, "--interview", "-i", help="Interview ID for transcript report"
@@ -762,12 +762,31 @@ def generate_report(
                 open_browser=open_browser,
             )
         elif report_type == "transcript":
-            console.print("[yellow]Transcript report not yet implemented[/yellow]")
-            console.print("[dim]Use 'plotline status' to see interview progress[/dim]")
-            return
+            if not interview:
+                console.print("[red]Error: --interview/-i required for transcript report[/red]")
+                console.print("[dim]Usage: plotline report transcript -i interview_001[/dim]")
+                raise typer.Exit(1)
+            from plotline.reports.transcript import generate_transcript
+
+            output_path = generate_transcript(
+                project_path=project_dir,
+                manifest=manifest,
+                interview_id=interview,
+                open_browser=open_browser,
+            )
+        elif report_type == "coverage":
+            from plotline.reports.coverage import generate_coverage
+
+            output_path = generate_coverage(
+                project_path=project_dir,
+                manifest=manifest,
+                open_browser=open_browser,
+            )
         else:
             console.print(f"[red]Unknown report type: {report_type}[/red]")
-            console.print("[dim]Valid types: dashboard, review, summary, transcript[/dim]")
+            console.print(
+                "[dim]Valid types: dashboard, review, summary, transcript, coverage[/dim]"
+            )
             raise typer.Exit(1)
 
         console.print(f"[green]✓[/green] {report_type.title()} report: {output_path}")
@@ -905,21 +924,120 @@ def run_pipeline(
             build_arc_cmd(force=False)
         console.print()
 
+    # Post-pipeline: cultural sensitivity flagging (if enabled)
+    from plotline.config import load_config
+
+    config = load_config(project_dir)
+    if config.cultural_flags:
+        console.print("[dim]Stage: cultural flags[/dim]")
+        cultural_flags_cmd(force=False)
+        console.print()
+
     console.print("[green]✓[/green] Pipeline complete!")
     console.print("\nNext steps:")
     console.print("  [cyan]plotline review[/cyan] - Review and approve selections")
     console.print("  [cyan]plotline export[/cyan] - Export timeline to EDL/FCPXML")
 
 
+@app.command("flags")
+def cultural_flags_cmd(
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Run even if cultural_flags is disabled in config"
+    ),
+) -> None:
+    """Run cultural sensitivity flagging on selected segments (LLM Pass 4).
+
+    Sends selected segments through an LLM prompt to flag content that may
+    require community review before publication.  Updates selections.json
+    in-place with flagged/flag_reason fields.
+    """
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    project = Project(project_dir)
+    manifest = project.load_manifest()
+
+    from plotline.config import load_config
+    from plotline.llm.client import create_client_from_config
+    from plotline.llm.flags import run_flags
+    from plotline.llm.templates import PromptTemplateManager
+
+    config = load_config(project_dir)
+    client = create_client_from_config(config)
+    template_manager = PromptTemplateManager(project_dir / "prompts")
+
+    results = run_flags(
+        project_path=project_dir,
+        manifest=manifest,
+        client=client,
+        template_manager=template_manager,
+        config=config,
+        force=force,
+        console=console,
+    )
+
+    if results.get("skipped"):
+        console.print(f"[yellow]Skipped:[/yellow] {results['reason']}")
+        console.print("[dim]Use --force to run anyway.[/dim]")
+        return
+
+    flagged = results["flagged"]
+    total = results["total_segments"]
+    console.print(f"\n[green]✓[/green] Flagging complete: {flagged}/{total} segments flagged")
+
+    if flagged > 0:
+        console.print(
+            "[dim]Review flagged segments in selections.json or via plotline review[/dim]"
+        )
+
+
 @app.command("compare")
 def compare_takes(
     message: str | None = typer.Option(
-        None, "--message", "-m", help="Specific key message to compare"
+        None, "--message", "-m", help="Filter to a specific key message"
     ),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open report in browser"),
 ) -> None:
-    """Compare best takes across interviews."""
-    console.print("[yellow]Comparing best takes...[/yellow]")
-    console.print("[dim]Not yet implemented[/dim]")
+    """Compare best takes across interviews for the same theme."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    from plotline.config import load_config
+    from plotline.reports.compare import generate_compare_report
+
+    project = Project(project_dir)
+    manifest = project.load_manifest()
+    config = load_config(project_dir)
+
+    synthesis_path = project_dir / "data" / "synthesis.json"
+    if not synthesis_path.exists():
+        console.print("[red]Error: No synthesis found[/red]")
+        console.print(
+            "[dim]Run 'plotline synthesize' first to generate best-take comparisons.[/dim]"
+        )
+        raise typer.Exit(1)
+
+    console.print("[cyan]Generating best-take comparison report...[/cyan]")
+
+    try:
+        output_path = generate_compare_report(
+            project_path=project_dir,
+            manifest=manifest,
+            config=config,
+            message_filter=message,
+            open_browser=open_browser,
+        )
+        console.print(f"[green]✓[/green] Comparison report: {output_path}")
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error generating comparison: {e}[/red]")
+        raise typer.Exit(1)
 
 
 @app.command("doctor")
