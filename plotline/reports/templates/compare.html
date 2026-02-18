@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project_name }} - Best-Take Comparison{% endblock %}
+
+{% block extra_styles %}
+.topic-group {
+    margin-bottom: 2rem;
+}
+
+.topic-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.topic-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.topic-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.brief-message {
+    background: var(--color-bg-tertiary);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.candidates-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.candidate-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    transition: all var(--transition-fast);
+}
+
+.candidate-card:hover {
+    border-color: var(--color-border-light);
+}
+
+.candidate-card.best-take {
+    border-color: var(--color-success);
+    box-shadow: 0 0 0 1px var(--color-success);
+}
+
+.candidate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rank-badge.rank-1 {
+    background: var(--color-success);
+    color: white;
+}
+
+.rank-badge.rank-2 {
+    background: var(--color-accent-secondary);
+    color: white;
+}
+
+.rank-badge.rank-3 {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+}
+
+.candidate-interview {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.candidate-text {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-primary);
+}
+
+.candidate-timecode {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.candidate-scores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.score-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.score-label {
+    color: var(--color-text-muted);
+}
+
+.score-value {
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+
+.score-value.high {
+    color: var(--color-success);
+}
+
+.score-value.medium {
+    color: var(--color-warning);
+}
+
+.score-value.low {
+    color: var(--color-error);
+}
+
+.delivery-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.reasoning {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    padding: 0.5rem;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+}
+
+.audio-btn {
+    margin-top: 0.5rem;
+}
+
+.filter-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.filter-select {
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0.375rem 0.75rem;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.audio-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border);
+    padding: 1rem;
+    display: none;
+    z-index: 1000;
+}
+
+.audio-player.visible {
+    display: block;
+}
+
+.audio-player-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.audio-player audio {
+    flex: 1;
+}
+
+.audio-player-info {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.audio-player-close {
+    padding: 0.25rem 0.5rem;
+    background: var(--color-bg-tertiary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.stats-bar {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-secondary);
+}
+
+.empty-state h2 {
+    margin-bottom: 0.5rem;
+    color: var(--color-text-primary);
+}
+
+.perspectives {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    margin-top: 0.25rem;
+}
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <div>
+        <h1>Best-Take Comparison</h1>
+        <div class="header-meta">
+            <span class="badge badge-primary">{{ project_name }}</span>
+            <span class="text-secondary">{{ total_groups }} topics · {{ interview_count }} interviews</span>
+        </div>
+    </div>
+</div>
+
+<div class="stats-bar">
+    <div class="stat-item">
+        <div class="stat-value">{{ total_groups }}</div>
+        <div class="stat-label">Topics</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">{{ total_candidates }}</div>
+        <div class="stat-label">Candidates</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">{{ interview_count }}</div>
+        <div class="stat-label">Interviews</div>
+    </div>
+</div>
+
+{% if has_brief and key_messages %}
+<div class="filter-bar no-print">
+    <div class="filter-group">
+        <label class="filter-label">Filter by message:</label>
+        <select id="messageFilter" class="filter-select">
+            <option value="">All topics</option>
+            {% for msg in key_messages %}
+            <option value="{{ msg }}" {% if message_filter == msg %}selected{% endif %}>{{ msg[:50] }}{% if msg|length > 50 %}...{% endif %}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Sort by:</label>
+        <select id="sortOrder" class="filter-select">
+            <option value="rank">LLM Rank</option>
+            <option value="cross_score">Delivery Score</option>
+        </select>
+    </div>
+</div>
+{% endif %}
+
+{% if groups %}
+    {% for group in groups %}
+    <div class="topic-group card" data-topic="{{ group.topic }}">
+        <div class="topic-header">
+            <div class="topic-title">{{ group.topic }}</div>
+            <div class="topic-meta">
+                <span>{{ group.candidate_count }} candidate{{ 's' if group.candidate_count != 1 else '' }}</span>
+                <span>{{ group.source_theme_count }} source theme{{ 's' if group.source_theme_count != 1 else '' }}</span>
+            </div>
+            {% if group.brief_message %}
+            <div class="brief-message">
+                <strong>Brief Message:</strong> {{ group.brief_message }}
+            </div>
+            {% endif %}
+            {% if group.perspectives %}
+            <div class="perspectives">{{ group.perspectives }}</div>
+            {% endif %}
+        </div>
+
+        <div class="candidates-grid">
+            {% for candidate in group.candidates %}
+            <div class="candidate-card {% if candidate.is_best %}best-take{% endif %}"
+                 data-rank="{{ candidate.rank }}"
+                 data-cross-score="{{ candidate.cross_score }}"
+                 data-segment-id="{{ candidate.segment_id }}">
+                <div class="candidate-header">
+                    <span class="rank-badge rank-{{ candidate.rank }}">
+                        {% if candidate.rank == 1 %}🏆{% endif %}
+                        Rank {{ candidate.rank }}
+                    </span>
+                    <span class="candidate-interview">{{ candidate.interview_id }}</span>
+                </div>
+
+                <div class="candidate-timecode">{{ candidate.timecode }}</div>
+
+                <div class="candidate-text">"{{ candidate.text }}"</div>
+
+                <div class="candidate-scores">
+                    <div class="score-item">
+                        <span class="score-label">Delivery:</span>
+                        <span class="score-value {{ 'high' if candidate.cross_score >= 0.7 else ('medium' if candidate.cross_score >= 0.4 else 'low') }}">
+                            {{ candidate.cross_score }}
+                        </span>
+                    </div>
+                    {% if candidate.content_alignment is not none %}
+                    <div class="score-item">
+                        <span class="score-label">Content:</span>
+                        <span class="score-value">{{ candidate.content_alignment }}</span>
+                    </div>
+                    {% endif %}
+                    {% if candidate.conciseness_score is not none %}
+                    <div class="score-item">
+                        <span class="score-label">Concise:</span>
+                        <span class="score-value">{{ candidate.conciseness_score }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="delivery-display">
+                    <div class="delivery-badge">
+                        <div class="delivery-bar">
+                            <div class="delivery-bar-segment {{ candidate.delivery_class }}"></div>
+                            <div class="delivery-bar-segment {{ candidate.delivery_class }}"></div>
+                            <div class="delivery-bar-segment {% if candidate.cross_score > 0.33 %}{{ candidate.delivery_class }}{% endif %}"></div>
+                        </div>
+                    </div>
+                    <span class="text-muted">{{ candidate.delivery_label }}</span>
+                </div>
+
+                {% if candidate.reasoning %}
+                <div class="reasoning">{{ candidate.reasoning }}</div>
+                {% endif %}
+
+                {% if candidate.audio_path %}
+                <button class="btn btn-secondary btn-sm audio-btn no-print"
+                        onclick="playAudio('{{ candidate.audio_path }}', '{{ candidate.interview_id }}', '{{ candidate.segment_id }}')">
+                    ▶ Play Audio
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        <h2>No comparison groups found</h2>
+        <p>{% if message_filter %}No topics match the filter "{{ message_filter }}"{% else %}Run <code>plotline synthesize</code> to generate best-take comparisons{% endif %}</p>
+    </div>
+{% endif %}
+
+<div id="audioPlayer" class="audio-player no-print">
+    <div class="audio-player-content">
+        <div class="audio-player-info" id="audioPlayerInfo">No audio selected</div>
+        <audio id="audioElement" controls preload="auto"></audio>
+        <button class="audio-player-close" onclick="closeAudio()">✕</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+function playAudio(path, interviewId, segmentId) {
+    const audio = document.getElementById('audioElement');
+    const player = document.getElementById('audioPlayer');
+    const info = document.getElementById('audioPlayerInfo');
+
+    audio.src = path;
+    audio.play();
+    player.classList.add('visible');
+    info.textContent = interviewId + ' / ' + segmentId;
+}
+
+function closeAudio() {
+    const audio = document.getElementById('audioElement');
+    const player = document.getElementById('audioPlayer');
+    audio.pause();
+    audio.src = '';
+    player.classList.remove('visible');
+}
+
+document.getElementById('messageFilter')?.addEventListener('change', function(e) {
+    const value = e.target.value;
+    if (value) {
+        window.location.href = window.location.pathname + '?message=' + encodeURIComponent(value);
+    } else {
+        window.location.href = window.location.pathname;
+    }
+});
+
+document.getElementById('sortOrder')?.addEventListener('change', function(e) {
+    const sortBy = e.target.value;
+    document.querySelectorAll('.candidates-grid').forEach(grid => {
+        const cards = Array.from(grid.querySelectorAll('.candidate-card'));
+        cards.sort((a, b) => {
+            if (sortBy === 'cross_score') {
+                return parseFloat(b.dataset.crossScore) - parseFloat(a.dataset.crossScore);
+            } else {
+                return parseInt(a.dataset.rank) - parseInt(b.dataset.rank);
+            }
+        });
+        cards.forEach(card => grid.appendChild(card));
+    });
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAudio();
+    }
+});
+{% endblock %}
