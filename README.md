@@ -104,6 +104,7 @@ plotline export --format edl
 | `plotline report summary`     | Project summary                          |
 | `plotline report transcript`  | Per-interview transcript with waveform   |
 | `plotline report coverage`    | Brief coverage matrix                    |
+| `plotline report themes`      | Interactive theme explorer               |
 
 ### Export
 
@@ -387,6 +388,21 @@ Cross-interview best-take comparison with:
 - Audio playback per segment
 - Sort/filter by theme or message
 - Cross-interview score normalization
+
+### Theme Explorer
+
+```bash
+plotline report themes
+```
+
+Interactive explorer for reviewing project content by meaning and theme:
+
+- **Sidebar navigation**: List of all unified themes with segment counts and strength indicators
+- **Theme filtering**: Click a theme to instantly see all relevant segments and theme description
+- **Multi-theme intersections**: Visual badges on segments assigned to 2 or more themes
+- **Interactive controls**: Sort by delivery score/time, group by interview, and search text
+- **Audio playback**: Embedded player for quick review of any themed segment
+- **Offline compatible**: Works entirely under the `file://` protocol
 
 ## Project Structure
 

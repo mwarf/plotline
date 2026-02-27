@@ -2,6 +2,29 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [0.2.1] - 2026-02-27
+
+Reporting Polish & Theme Explorer released — interactive theme navigation and reporting suite bug fixes.
+
+### Added
+
+#### Theme Explorer Report (`plotline report themes`)
+
+- Interactive sidebar for theme navigation with segment counts and strength indicators
+- Automated multi-theme intersection detection with visual badges and notes
+- Client-side sorting (Delivery Score, Chronological, Theme Count) and search
+- Cross-interview unified theme views (via `synthesis.json`) or per-interview fallback
+- `plotline/reports/themes.py` — generator module
+- `plotline/reports/templates/themes.html` — interactive report template
+
+### Fixed
+
+- **Review Report**: Corrected approval/rejection counters and persistent state saving using `localStorage` (fixing `file://` protocol issues)
+- **Compare Report**: Resolved uncaught `audio.play()` errors and fixed message filtering under the `file://` protocol
+- **Summary Report**: Improved narrative arc visualization with expanded role mappings and distinct colors for 'climax' and 'resolution' segments
+- **Dashboard**: Replaced hardcoded "Run Next Stage" button with dynamic logic based on actual pipeline progress per interview
+- **General**: Improved audio playback robustness across all reporting templates
+
 ## [0.2.0] - 2026-02-17
 
 Polish & Gaps release — cross-interview comparison, new reports, and cultural sensitivity flagging.
