@@ -64,6 +64,12 @@ class PlotlineConfig(BaseModel):
     cultural_flags: bool = False
     pitch_backend: str = "librosa"
 
+    diarization_enabled: bool = False
+    diarization_model: str = "pyannote/speaker-diarization-3.1"
+    diarization_num_speakers: int | None = None
+    diarization_min_speakers: int = Field(default=2, ge=1)
+    diarization_max_speakers: int = Field(default=5, ge=1)
+
     profile_config_path: Path | None = None
 
     @field_validator("privacy_mode")

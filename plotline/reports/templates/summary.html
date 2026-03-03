@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block title %}{{ project_name }} - Summary{%
-endblock %} {% block extra_styles %} .summary-section { margin-bottom: 2rem; }
+endblock %} {% block nav_summary %}active{% endblock %} {% block extra_styles %} .summary-section { margin-bottom: 2rem; }
 .summary-section h2 { font-size: 1.125rem; font-weight: 600; margin-bottom:
 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); }
 .contribution-grid { display: grid; grid-template-columns: repeat(auto-fill,
@@ -69,7 +69,7 @@ color: var(--color-text-secondary); margin-top: 0.5rem; } @media print {
   <h2>Interview Contributions</h2>
   <div class="contribution-grid">
     {% for interview in interviews %}
-    <div class="contribution-card">
+    <div class="contribution-card" style="cursor: pointer;" onclick="window.location='transcript_{{ interview.id }}.html'">
       <div class="contribution-header">
         <div class="contribution-filename">{{ interview.filename }}</div>
         <span class="badge badge-secondary">{{ interview.duration }}</span>
@@ -90,7 +90,7 @@ color: var(--color-text-secondary); margin-top: 0.5rem; } @media print {
   <h2>Theme Map</h2>
   <div class="theme-cloud">
     {% for theme in themes %}
-    <span class="theme-pill size-{{ theme.size }}">{{ theme.name }}</span>
+    <a href="themes.html#{{ theme.id }}" class="theme-pill size-{{ theme.size }}" style="text-decoration: none; color: inherit;">{{ theme.name }}</a>
     {% endfor %}
   </div>
 </div>
@@ -99,7 +99,7 @@ color: var(--color-text-secondary); margin-top: 0.5rem; } @media print {
   <h2>Narrative Arc</h2>
   <div class="arc-timeline">
     {% for segment in arc_segments %}
-    <div class="arc-item">
+    <div class="arc-item" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ segment.id }}'">
       <div class="arc-marker {{ segment.role_class }}"></div>
       <div class="arc-content">
         <div class="arc-role">{{ segment.role }}</div>
@@ -114,7 +114,7 @@ color: var(--color-text-secondary); margin-top: 0.5rem; } @media print {
   <h2>Delivery Highlights</h2>
   <div class="highlights-grid">
     {% for highlight in highlights %}
-    <div class="highlight-card">
+    <div class="highlight-card" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ highlight.id }}'">
       <div class="highlight-score">{{ highlight.score }}</div>
       <div class="highlight-text">"{{ highlight.text }}"</div>
       <div class="text-muted mt-1">{{ highlight.filename }}</div>

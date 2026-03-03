@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block title %}{{ project_name }} - Selection
-Review{% endblock %} {% block extra_styles %} .review-container { display: grid;
+Review{% endblock %} {% block nav_review %}active{% endblock %} {% block extra_styles %} .review-container { display: grid;
 grid-template-columns: 1fr 400px; gap: 2rem; min-height: calc(100vh - 4rem); }
 @media (max-width: 1024px) { .review-container { grid-template-columns: 1fr; } }
 .timeline { display: flex; flex-direction: column; gap: 1rem; } .segment-card {
@@ -15,7 +15,10 @@ var(--color-success); } .segment-card.rejected { opacity: 0.5; order: 999; }
 flex-start; margin-bottom: 0.75rem; } .segment-role { display: inline-flex;
 align-items: center; padding: 0.25rem 0.5rem; background:
 var(--color-accent-primary); border-radius: var(--radius-sm); font-size:
-0.75rem; font-weight: 600; text-transform: uppercase; } .segment-timecode {
+0.75rem; font-weight: 600; text-transform: uppercase; } .segment-speaker {
+display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; background:
+var(--color-bg-tertiary); border-radius: var(--radius-sm); font-size:
+0.75rem; font-weight: 500; margin-left: 0.5rem; } .segment-timecode {
 font-family: var(--font-mono); font-size: 0.75rem; color:
 var(--color-text-secondary); } .segment-text { font-size: 1rem; line-height:
 1.6; margin-bottom: 0.75rem; } .segment-meta { display: flex; justify-content:
@@ -44,6 +47,7 @@ display: inline-flex; align-items: center; justify-content: center; min-width:
 var(--color-bg-tertiary); border-radius: var(--radius-sm); font-family:
 var(--font-mono); font-size: 0.625rem; } .dragging { opacity: 0.5; transform:
 scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
+.drag-over-bottom { border-bottom: 2px solid var(--color-accent-primary); }
 {% endblock %} {% block content %}
 <div class="header">
   <div>
@@ -59,13 +63,24 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
   </div>
 </div>
 
+{% if cultural_flag_count > 0 %}
+<div class="alert alert-warning mb-2 no-print" style="background: rgba(234, 179, 8, 0.1); border: 1px solid var(--color-warning); padding: 1rem; border-radius: var(--radius-md);">
+  <strong style="color: var(--color-warning);">⚠ Cultural Review Recommended:</strong> {{ cultural_flag_count }} segment{% if cultural_flag_count != 1 %}s{% endif %} flagged by AI for potential cultural sensitivity. Please review carefully.
+</div>
+{% endif %}
+
 <div class="review-container">
   <div class="timeline" id="timeline">
     {% for segment in segments %}
-    <div class="segment-card" data-id="{{ segment.id }}" data-status="{{ segment.status }}" draggable="true"
+    <div class="segment-card" id="segment-{{ segment.id }}" data-id="{{ segment.id }}" data-status="{{ segment.status }}" draggable="true"
       tabindex="0">
       <div class="segment-header">
-        <span class="segment-role">{{ segment.role }}</span>
+        <div>
+          <span class="segment-role">{{ segment.role }}</span>
+          {% if segment.speaker_name %}
+          <span class="segment-speaker" style="border-left: 3px solid {{ segment.speaker_color }};">{{ segment.speaker_name }}</span>
+          {% endif %}
+        </div>
         <span class="segment-timecode">{{ segment.timecode }}</span>
       </div>
       <div class="segment-text">{{ segment.text }}</div>
@@ -86,9 +101,34 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
           <span class="text-muted ml-1">{{ segment.delivery_label }}</span>
         </div>
       </div>
-      {% if segment.editorial_notes %}
-      <div class="segment-notes">{{ segment.editorial_notes }}</div>
+      {% if segment.editorial_notes or segment.pacing %}
+      <div class="segment-notes">
+        {% if segment.editorial_notes %}
+        <div style="margin-bottom: {% if segment.pacing %}0.5rem{% else %}0{% endif %};">{{ segment.editorial_notes }}</div>
+        {% endif %}
+        {% if segment.pacing %}
+        <div style="font-size: 0.8rem; color: var(--color-accent-primary);"><strong>Pacing guidance:</strong> {{ segment.pacing }}</div>
+        {% endif %}
+      </div>
       {% endif %}
+      {% if segment.alternate_candidates %}
+      <div class="segment-alternates" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-bg-secondary); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--color-text-secondary);">
+        <strong style="display: block; margin-bottom: 0.25rem;">Alternate Candidates:</strong>
+        <ul style="margin: 0; padding-left: 1.25rem;">
+        {% for alt in segment.alternate_candidates %}
+          <li><span style="font-family: var(--font-mono); font-size: 0.7rem; background: var(--color-bg-tertiary); padding: 0.1rem 0.3rem; border-radius: var(--radius-sm);">{{ alt.segment_id }}</span> - {{ alt.reasoning }}</li>
+        {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if segment.culturally_flagged %}
+      <div class="segment-flag-warning" style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(234, 179, 8, 0.1); border-left: 3px solid var(--color-warning); border-radius: var(--radius-md); font-size: 0.875rem;">
+        <strong style="color: var(--color-warning);">⚠ Cultural Review Recommended:</strong> <span style="color: var(--color-text-primary);">{{ segment.flag_reason }}</span>
+      </div>
+      {% endif %}
+      <div class="user-notes-container mt-2" style="display: none;" id="notes-container-{{ segment.id }}">
+        <textarea class="user-notes-input" id="notes-{{ segment.id }}" placeholder="Add your editorial notes here..." style="width: 100%; min-height: 60px; padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary); font-family: var(--font-sans); font-size: 0.875rem; resize: vertical;" onblur="saveApprovals()"></textarea>
+      </div>
       <div class="segment-actions no-print">
         <button class="btn btn-success btn-sm" onclick="setStatus('{{ segment.id }}', 'approved')">
           ✓ Approve (A)
@@ -98,6 +138,9 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
         </button>
         <button class="btn btn-secondary btn-sm" onclick="setStatus('{{ segment.id }}', 'flagged')">
           ⚠ Flag (F)
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleNotes('{{ segment.id }}')" title="Add Notes">
+          📝 Notes
         </button>
       </div>
     </div>
@@ -141,6 +184,34 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
           Approved
         </button>
       </div>
+      
+      <div class="card-title mb-2 mt-4" style="font-size: 0.75rem;">Delivery</div>
+      <div class="filters delivery-filters">
+        <button class="btn btn-secondary delivery-filter-btn active" data-delivery="all" onclick="filterDelivery('all')">
+          All
+        </button>
+        <button class="btn btn-secondary delivery-filter-btn" data-delivery="high" onclick="filterDelivery('high')">
+          High
+        </button>
+        <button class="btn btn-secondary delivery-filter-btn" data-delivery="medium" onclick="filterDelivery('medium')">
+          Medium
+        </button>
+        <button class="btn btn-secondary delivery-filter-btn" data-delivery="low" onclick="filterDelivery('low')">
+          Low
+        </button>
+      </div>
+
+      <div style="margin-top: 0.75rem;">
+        <input type="text" id="searchInput" placeholder="Search text or themes..." style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary); font-family: var(--font-sans);" onkeyup="applySearch()">
+      </div>
+      
+      <div style="margin-top: 1rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">
+        <div class="card-title mb-2" style="font-size: 0.75rem;">Batch Actions (Visible Segments)</div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-success btn-sm" style="flex: 1;" onclick="batchAction('approved')">Approve All</button>
+            <button class="btn btn-error btn-sm" style="flex: 1;" onclick="batchAction('rejected')">Reject All</button>
+        </div>
+      </div>
     </div>
 
     <div class="audio-player no-print" id="audioPlayer" style="display: none">
@@ -165,7 +236,7 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
 {% block scripts %}
 
 let currentIndex = 0;
-const segments = document.querySelectorAll('.segment-card');
+let segments = document.querySelectorAll('.segment-card');
 const audio = document.getElementById('audio');
 const audioPlayer = document.getElementById('audioPlayer');
 const audioSource = document.getElementById('audioSource');
@@ -182,9 +253,30 @@ if (!card) return;
 card.dataset.status = entry.status;
 card.classList.remove('approved', 'rejected', 'flagged');
 if (entry.status !== 'pending') card.classList.add(entry.status);
+
+if (entry.user_notes) {
+  const notesContainer = document.getElementById('notes-container-' + entry.segment_id);
+  const notesInput = document.getElementById('notes-' + entry.segment_id);
+  if (notesContainer && notesInput) {
+    notesInput.value = entry.user_notes;
+    notesContainer.style.display = 'block';
+  }
+}
 });
 } catch(e) {}
 })();
+
+function toggleNotes(id) {
+  const container = document.getElementById('notes-container-' + id);
+  if (container) {
+    if (container.style.display === 'none') {
+      container.style.display = 'block';
+      document.getElementById('notes-' + id).focus();
+    } else {
+      container.style.display = 'none';
+    }
+  }
+}
 
 function focusSegment(index) {
 segments.forEach((s, i) => { s.classList.toggle('focused', i === index); });
@@ -212,24 +304,84 @@ function filterSegments(filter) {
 document.querySelectorAll('.filter-btn').forEach(btn => {
 btn.classList.toggle('active', btn.dataset.filter === filter);
 });
+applySearch();
+}
+
+function filterDelivery(delivery) {
+document.querySelectorAll('.delivery-filter-btn').forEach(btn => {
+btn.classList.toggle('active', btn.dataset.delivery === delivery);
+});
+applySearch();
+}
+
+function applySearch() {
+const activeFilterBtn = document.querySelector('.filter-btn.active');
+const filter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+
+const activeDeliveryBtn = document.querySelector('.delivery-filter-btn.active');
+const deliveryFilter = activeDeliveryBtn ? activeDeliveryBtn.dataset.delivery : 'all';
+
+const searchText = (document.getElementById('searchInput').value || '').toLowerCase();
+
 segments.forEach(s => {
 const status = s.dataset.status;
-const show = filter === 'all' || status === filter || (filter === 'pending' && status === 'pending');
-s.style.display = show ? '' : 'none';
+const text = (s.querySelector('.segment-text')?.textContent || '').toLowerCase();
+const themes = Array.from(s.querySelectorAll('.pill')).map(p => p.textContent.toLowerCase()).join(' ');
+const notes = (s.querySelector('.segment-notes')?.textContent || '').toLowerCase();
+// Find the delivery class by checking the bar segments
+const firstBar = s.querySelector('.delivery-bar-segment');
+let deliveryClass = 'medium';
+if (firstBar) {
+    if (firstBar.classList.contains('high')) deliveryClass = 'high';
+    else if (firstBar.classList.contains('low')) deliveryClass = 'low';
+}
+
+const matchesStatus = filter === 'all' || status === filter || (filter === 'pending' && status === 'pending');
+const matchesDelivery = deliveryFilter === 'all' || deliveryClass === deliveryFilter;
+const matchesSearch = !searchText || text.includes(searchText) || themes.includes(searchText) || notes.includes(searchText);
+
+s.style.display = matchesStatus && matchesDelivery && matchesSearch ? '' : 'none';
 });
+}
+
+function batchAction(action) {
+    if (!confirm(`Are you sure you want to ${action} all VISIBLE segments?`)) return;
+    
+    segments.forEach(s => {
+        if (s.style.display !== 'none') {
+            setStatus(s.dataset.id, action);
+        }
+    });
 }
 
 function buildApprovalsPayload() {
 const segList = [];
-segments.forEach((s, idx) => {
+// Need to grab current segments from DOM since they might be reordered
+const currentSegments = document.querySelectorAll('.segment-card');
+let isReordered = false;
+
+currentSegments.forEach((s, idx) => {
+// Check if original index doesn't match current position
+// This assumes segment.id matches the original ID in reportData.segments
+const originalData = reportData.segments.find(d => d.id === s.dataset.id);
+if (originalData && originalData.position && originalData.position !== (idx + 1)) {
+    isReordered = true;
+}
+
+const notesInput = document.getElementById('notes-' + s.dataset.id);
+const user_notes = notesInput && notesInput.value.trim() ? notesInput.value.trim() : null;
+
 segList.push({
 segment_id: s.dataset.id,
 position: idx + 1,
 status: s.dataset.status,
-user_notes: null,
+user_notes: user_notes,
 flag_acknowledged: false
 });
 });
+
+const customOrder = isReordered ? segList.map(s => s.segment_id) : null;
+
 const approved = segList.filter(s => s.status === 'approved').length;
 const rejected = segList.filter(s => s.status === 'rejected').length;
 const pending = segList.filter(s => s.status === 'pending').length;
@@ -240,8 +392,8 @@ approved,
 rejected,
 pending,
 segments: segList,
-reordered: false,
-custom_order: null
+reordered: isReordered,
+custom_order: customOrder
 };
 }
 
@@ -324,7 +476,84 @@ case 'ArrowDown': e.preventDefault(); if (currentIndex < segments.length - 1) fo
   });
 
   segments.forEach((s, i) => { s.addEventListener('click', () => focusSegment(i)); });
+
+  // Drag and drop functionality
+  let draggedCard = null;
+  
+  document.querySelectorAll('.segment-card').forEach(card => {
+      card.addEventListener('dragstart', function(e) {
+          draggedCard = this;
+          setTimeout(() => this.classList.add('dragging'), 0);
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', this.dataset.id);
+      });
+
+      card.addEventListener('dragend', function() {
+          draggedCard = null;
+          this.classList.remove('dragging');
+          document.querySelectorAll('.segment-card').forEach(c => c.classList.remove('drag-over', 'drag-over-bottom'));
+          saveApprovals(); // Save new order
+      });
+
+      card.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (this === draggedCard) return;
+          
+          const rect = this.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          
+          if (e.clientY < midpoint) {
+              this.classList.add('drag-over');
+              this.classList.remove('drag-over-bottom');
+          } else {
+              this.classList.add('drag-over-bottom');
+              this.classList.remove('drag-over');
+          }
+      });
+
+      card.addEventListener('dragleave', function() {
+          this.classList.remove('drag-over', 'drag-over-bottom');
+      });
+
+      card.addEventListener('drop', function(e) {
+          e.preventDefault();
+          if (this === draggedCard) return;
+          
+          this.classList.remove('drag-over', 'drag-over-bottom');
+          
+          const rect = this.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          
+          const timeline = document.getElementById('timeline');
+          if (e.clientY < midpoint) {
+              timeline.insertBefore(draggedCard, this);
+          } else {
+              timeline.insertBefore(draggedCard, this.nextSibling);
+          }
+          
+          // Rebuild DOM segments array to match new order for keyboard nav
+          segments = document.querySelectorAll('.segment-card');
+      });
+  });
+
+  // Handle deep links
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      if (hash.startsWith('segment-')) {
+        const id = hash.substring(8);
+        const card = document.getElementById('segment-' + id);
+        if (card) {
+          const index = Array.from(segments).indexOf(card);
+          if (index !== -1) {
+            setTimeout(() => focusSegment(index), 100);
+          }
+        }
+      }
+    }
+  });
+
   updateSummary();
-  if (segments.length > 0) { focusSegment(0); }
+  if (segments.length > 0 && !window.location.hash) { focusSegment(0); }
 
   {% endblock %}

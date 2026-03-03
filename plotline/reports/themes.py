@@ -13,28 +13,7 @@ from typing import Any
 from plotline.export.timecode import seconds_to_timecode
 from plotline.project import read_json
 from plotline.reports.generator import ReportGenerator
-from plotline.utils import format_duration, get_delivery_class
-
-
-THEME_COLORS = [
-    "#3b82f6",
-    "#8b5cf6",
-    "#06b6d4",
-    "#22c55e",
-    "#f59e0b",
-    "#ef4444",
-    "#ec4899",
-    "#14b8a6",
-    "#6366f1",
-    "#d946ef",
-    "#0ea5e9",
-    "#84cc16",
-]
-
-
-def get_theme_color(index: int) -> str:
-    """Get a consistent color for a theme by index."""
-    return THEME_COLORS[index % len(THEME_COLORS)]
+from plotline.utils import format_duration, get_delivery_class, THEME_COLORS, get_theme_color
 
 
 def _build_segment_lookup(
@@ -124,9 +103,7 @@ def generate_themes_report(
     has_per_interview = themes_dir.exists() and any(themes_dir.glob("*.json"))
 
     if not use_synthesis and not has_per_interview:
-        raise FileNotFoundError(
-            "No theme data found. Run 'plotline themes' first."
-        )
+        raise FileNotFoundError("No theme data found. Run 'plotline themes' first.")
 
     themes_list: list[dict[str, Any]] = []
     intersections: list[dict[str, Any]] = []
@@ -139,17 +116,19 @@ def generate_themes_report(
             seg_ids = utheme.get("all_segment_ids", [])
             color = get_theme_color(i)
 
-            themes_list.append({
-                "id": utheme.get("unified_theme_id", f"utheme_{i+1:03d}"),
-                "name": name,
-                "description": utheme.get("description", ""),
-                "strength": 0.8,  # Synthesis doesn't have per-theme strength
-                "emotional_character": utheme.get("perspectives", ""),
-                "segment_count": len(seg_ids),
-                "segment_ids": seg_ids,
-                "color": color,
-                "source_count": len(utheme.get("source_themes", [])),
-            })
+            themes_list.append(
+                {
+                    "id": utheme.get("unified_theme_id", f"utheme_{i + 1:03d}"),
+                    "name": name,
+                    "description": utheme.get("description", ""),
+                    "strength": 0.8,  # Synthesis doesn't have per-theme strength
+                    "emotional_character": utheme.get("perspectives", ""),
+                    "segment_count": len(seg_ids),
+                    "segment_ids": seg_ids,
+                    "color": color,
+                    "source_count": len(utheme.get("source_themes", [])),
+                }
+            )
             all_theme_segment_ids[name] = seg_ids
 
             # Tag segments with this theme
@@ -167,17 +146,19 @@ def generate_themes_report(
                 seg_ids = theme.get("segment_ids", [])
                 color = get_theme_color(theme_index)
 
-                themes_list.append({
-                    "id": theme.get("theme_id", f"theme_{theme_index+1:03d}"),
-                    "name": name,
-                    "description": theme.get("description", ""),
-                    "strength": theme.get("strength", 0.5),
-                    "emotional_character": theme.get("emotional_character", ""),
-                    "segment_count": len(seg_ids),
-                    "segment_ids": seg_ids,
-                    "color": color,
-                    "source_count": 1,
-                })
+                themes_list.append(
+                    {
+                        "id": theme.get("theme_id", f"theme_{theme_index + 1:03d}"),
+                        "name": name,
+                        "description": theme.get("description", ""),
+                        "strength": theme.get("strength", 0.5),
+                        "emotional_character": theme.get("emotional_character", ""),
+                        "segment_count": len(seg_ids),
+                        "segment_ids": seg_ids,
+                        "color": color,
+                        "source_count": 1,
+                    }
+                )
                 all_theme_segment_ids[name] = seg_ids
 
                 for seg_id in seg_ids:
@@ -193,32 +174,33 @@ def generate_themes_report(
             for intersection in theme_data.get("intersections", []):
                 seg_id = intersection.get("segment_id", "")
                 if seg_id in segment_lookup:
-                    intersections.append({
-                        "segment_id": seg_id,
-                        "theme_ids": intersection.get("themes", []),
-                        "note": intersection.get("note", ""),
-                        "segment": segment_lookup[seg_id],
-                    })
+                    intersections.append(
+                        {
+                            "segment_id": seg_id,
+                            "theme_ids": intersection.get("themes", []),
+                            "note": intersection.get("note", ""),
+                            "segment": segment_lookup[seg_id],
+                        }
+                    )
 
     # Find intersection segments (in 2+ themes) if not already collected
     if use_synthesis or not intersections:
         for seg_id, seg_data in segment_lookup.items():
             if len(seg_data["themes"]) >= 2:
-                intersections.append({
-                    "segment_id": seg_id,
-                    "theme_names": seg_data["themes"],
-                    "note": "",
-                    "segment": seg_data,
-                })
+                intersections.append(
+                    {
+                        "segment_id": seg_id,
+                        "theme_names": seg_data["themes"],
+                        "note": "",
+                        "segment": seg_data,
+                    }
+                )
 
     # Sort themes by segment count (largest first)
     themes_list.sort(key=lambda t: t["segment_count"], reverse=True)
 
     # Build flat segments list (only those assigned to at least one theme)
-    themed_segments = [
-        seg for seg in segment_lookup.values()
-        if len(seg["themes"]) > 0
-    ]
+    themed_segments = [seg for seg in segment_lookup.values() if len(seg["themes"]) > 0]
     themed_segments.sort(key=lambda s: s["delivery_score"], reverse=True)
 
     # Interview list for filter
@@ -247,7 +229,7 @@ def generate_themes_report(
     }
 
     generator = ReportGenerator()
-    result_path = generator.render("themes.html", data, output_path)
+    result_path = generator.render("themes.html", data, output_path, manifest=manifest)
 
     if open_browser:
         generator.open_in_browser(result_path)

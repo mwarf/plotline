@@ -94,6 +94,67 @@ class TestEDL:
         assert "int-001" in edl or "R001" in edl
         assert "FROM CLIP NAME: interview1.mp4" in edl
 
+    def test_generate_edl_includes_speaker_comment(self):
+        """Test that EDL includes speaker comment when present."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 25.0,
+                "role": "hook",
+                "text": "Test segment",
+                "speaker": "SPEAKER_00",
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        edl = generate_edl(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert "* SPEAKER: SPEAKER_00" in edl
+
+    def test_generate_edl_no_speaker_when_none(self):
+        """Test that EDL omits speaker comment when not present."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 25.0,
+                "role": "hook",
+                "text": "Test segment",
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        edl = generate_edl(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert "* SPEAKER:" not in edl
+
     def test_generate_edl_multiple_selections(self):
         selections = [
             {
@@ -247,3 +308,93 @@ class TestFCPXML:
 
         assert "keyword" in fcpxml
         assert "journey" in fcpxml or "transformation" in fcpxml
+
+    def test_generate_fcpxml_includes_speaker_keyword(self):
+        """Test that FCPXML includes speaker keyword when present."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 0,
+                "end": 10,
+                "speaker": "SPEAKER_00",
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert 'value="Speaker: SPEAKER_00"' in fcpxml
+
+    def test_generate_fcpxml_speaker_in_clip_name(self):
+        """Test that speaker is included in clip name."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 0,
+                "end": 10,
+                "speaker": "SPEAKER_01",
+                "role": "hook",
+                "text": "Test segment text here",
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert "SPEAKER_01" in fcpxml
+        assert "Hook" in fcpxml
+
+    def test_generate_fcpxml_no_speaker_keyword_when_none(self):
+        """Test that FCPXML omits speaker keyword when not present."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 0,
+                "end": 10,
+                "text": "Test segment",
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert "Speaker:" not in fcpxml

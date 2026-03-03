@@ -183,8 +183,17 @@ def generate_fcpxml(
         clip_duration = padded_end - padded_start
 
         role = sel.get("role", "")
+        speaker = sel.get("speaker")
         text = sel.get("text", "")[:50]
-        clip_name = f"{role.title()} - {text}..." if role else f"Clip {i}"
+
+        if speaker and role:
+            clip_name = f"{speaker} - {role.title()} - {text}..."
+        elif role:
+            clip_name = f"{role.title()} - {text}..."
+        elif speaker:
+            clip_name = f"{speaker} - {text}..."
+        else:
+            clip_name = f"Clip {i}"
 
         ref = asset_map.get(interview_id, "a1")
 
@@ -196,6 +205,13 @@ def generate_fcpxml(
             f'duration="{seconds_to_fcpxml_time(clip_duration, fps)}">'
         )
         lines.append(clip_line)
+
+        if speaker:
+            lines.append(
+                f'                            <keyword start="0s" '
+                f'duration="{seconds_to_fcpxml_time(clip_duration, fps)}" '
+                f'value="Speaker: {speaker}"/>'
+            )
 
         themes = sel.get("themes", [])
         if themes:

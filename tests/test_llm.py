@@ -79,6 +79,63 @@ class TestFormatTranscriptForPrompt:
         assert "Hello world" in result
         assert "moderate energy" in result
 
+    def test_format_includes_speaker_when_present(self) -> None:
+        """Test that speaker label is included when present."""
+        segments = [
+            {
+                "segment_id": "seg_001",
+                "start": 0.0,
+                "end": 5.0,
+                "text": "Hello world",
+                "speaker": "SPEAKER_00",
+            }
+        ]
+        result = format_transcript_for_prompt(segments)
+        assert "Speaker: SPEAKER_00" in result
+
+    def test_format_omits_speaker_when_none(self) -> None:
+        """Test that speaker label is omitted when None."""
+        segments = [
+            {
+                "segment_id": "seg_001",
+                "start": 0.0,
+                "end": 5.0,
+                "text": "Hello world",
+                "speaker": None,
+            }
+        ]
+        result = format_transcript_for_prompt(segments)
+        assert "Speaker:" not in result
+
+    def test_format_omits_speaker_when_missing(self) -> None:
+        """Test that speaker label is omitted when field is absent."""
+        segments = [
+            {
+                "segment_id": "seg_001",
+                "start": 0.0,
+                "end": 5.0,
+                "text": "Hello world",
+            }
+        ]
+        result = format_transcript_for_prompt(segments)
+        assert "Speaker:" not in result
+
+    def test_format_includes_speaker_and_delivery(self) -> None:
+        """Test that both speaker and delivery are included."""
+        segments = [
+            {
+                "segment_id": "seg_001",
+                "start": 0.0,
+                "end": 5.0,
+                "text": "Hello world",
+                "speaker": "SPEAKER_01",
+                "delivery": {"delivery_label": "confident"},
+            }
+        ]
+        result = format_transcript_for_prompt(segments)
+        assert "Speaker: SPEAKER_01" in result
+        assert "Delivery: confident" in result
+
 
 class TestLLMClient:
     def test_privacy_mode_local_blocks_cloud(self) -> None:

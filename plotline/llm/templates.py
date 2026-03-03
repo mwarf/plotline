@@ -80,7 +80,7 @@ def format_transcript_for_prompt(segments: list[dict[str, Any]]) -> str:
     """Format enriched segments for LLM prompt.
 
     Creates a readable transcript format with segment IDs, timecodes,
-    and delivery labels.
+    speaker labels, and delivery labels.
 
     Args:
         segments: List of enriched segment dicts
@@ -95,6 +95,7 @@ def format_transcript_for_prompt(segments: list[dict[str, Any]]) -> str:
         start = seg.get("start", 0)
         end = seg.get("end", 0)
         text = seg.get("text", "").strip()
+        speaker = seg.get("speaker")
         delivery = seg.get("delivery", {})
         delivery_label = delivery.get("delivery_label", "")
 
@@ -102,6 +103,8 @@ def format_transcript_for_prompt(segments: list[dict[str, Any]]) -> str:
         end_tc = format_timecode(end)
 
         line = f"[{segment_id}] {start_tc} → {end_tc}"
+        if speaker:
+            line += f" | Speaker: {speaker}"
         if delivery_label:
             line += f" | Delivery: {delivery_label}"
         line += f'\n"{text}"\n'

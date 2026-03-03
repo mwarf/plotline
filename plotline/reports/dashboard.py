@@ -11,16 +11,7 @@ from typing import Any
 
 from plotline.project import read_json
 from plotline.reports.generator import ReportGenerator
-
-
-def format_duration(seconds: float) -> str:
-    """Format seconds as HH:MM or MM:SS."""
-    if seconds >= 3600:
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        return f"{hours}h {minutes}m"
-    minutes = int(seconds // 60)
-    return f"{minutes}m"
+from plotline.utils import format_duration_friendly as format_duration
 
 
 def get_stage_status(stages: dict[str, bool]) -> list[dict[str, Any]]:
@@ -133,10 +124,14 @@ def generate_dashboard(
         "has_brief": has_brief,
         "brief_name": brief_data.get("name", "Brief"),
         "brief_summary": brief_data.get("summary", ""),
+        "brief_audience": brief_data.get("audience", ""),
+        "brief_tone": brief_data.get("tone_direction", ""),
+        "brief_avoid_topics": brief_data.get("avoid_topics", []),
+        "brief_target_duration": brief_data.get("target_duration", ""),
     }
 
     generator = ReportGenerator()
-    result_path = generator.render("dashboard.html", data, output_path)
+    result_path = generator.render("dashboard.html", data, output_path, manifest=manifest)
 
     if open_browser:
         generator.open_in_browser(result_path)

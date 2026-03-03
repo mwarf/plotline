@@ -2,6 +2,8 @@
 
 {% block title %}{{ project_name }} - Coverage Matrix{% endblock %}
 
+{% block nav_coverage %}active{% endblock %}
+
 {% block extra_styles %}
 .header-info {
     display: flex;
@@ -365,24 +367,9 @@
     border: 1px solid var(--color-success);
 }
 
-.full-coverage h2 {
-    color: var(--color-success);
-    margin-bottom: 0.5rem;
-}
-
-@media (max-width: 640px) {
-    .stats-bar {
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .stat-item {
-        flex: 1;
-        min-width: 80px;
-    }
-    .message-header {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
+@media print {
+    .message-card { break-inside: avoid; }
+    .matrix-section { break-inside: avoid; }
 }
 {% endblock %}
 
@@ -390,6 +377,55 @@
 <div class="header">
     <div>
         <h1>Coverage Matrix</h1>
+        {% if not missing_brief and not missing_selections %}
+        <div class="header-meta">
+            <span class="badge badge-primary">{{ project_name }}</span>
+            <span class="badge badge-secondary">{{ brief_name }}</span>
+        </div>
+        <div class="header-info">
+            <span>{{ total_messages }} key messages</span>
+            <span>{{ total_segments }} segments selected</span>
+        </div>
+        {% else %}
+        <div class="header-meta">
+            <span class="badge badge-primary">{{ project_name }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if missing_brief %}
+<div class="message-card gap" style="margin-top: 2rem;">
+    <div class="message-header">
+        <div class="message-status">
+            <span class="status-icon">⚠️</span>
+            <span class="message-id">Missing Brief</span>
+        </div>
+    </div>
+    <div class="message-text">
+        <strong>No Brief Attached.</strong> A creative brief is required to generate the coverage matrix.
+    </div>
+    <div class="gap-suggestion">
+        Please run <code>plotline brief &lt;file&gt;</code> to attach a brief to this project.
+    </div>
+</div>
+{% elif missing_selections %}
+<div class="message-card gap" style="margin-top: 2rem;">
+    <div class="message-header">
+        <div class="message-status">
+            <span class="status-icon">⚠️</span>
+            <span class="message-id">Missing Selections</span>
+        </div>
+    </div>
+    <div class="message-text">
+        <strong>No Selections Found.</strong> The coverage matrix requires story arc selections to analyze.
+    </div>
+    <div class="gap-suggestion">
+        Please run <code>plotline arc</code> first to generate story arc selections.
+    </div>
+</div>
+{% else %}
+
         <div class="header-meta">
             <span class="badge badge-primary">{{ project_name }}</span>
             <span class="badge badge-secondary">{{ brief_name }}</span>
@@ -468,7 +504,7 @@
             <div class="segments-label">Strong matches</div>
             <div class="segment-pills">
                 {% for seg in message.strong_segments[:5] %}
-                <span class="segment-pill" title="{{ seg.text }}">
+                <span class="segment-pill" title="{{ seg.text }}" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ seg.id }}'">
                     {{ seg.interview_id }} · {{ seg.timecode }}
                     <span class="score {{ seg.delivery_class }}">{{ seg.delivery_score }}</span>
                 </span>
@@ -485,7 +521,7 @@
             <div class="segments-label">Theme-level matches</div>
             <div class="segment-pills">
                 {% for seg in message.weak_segments[:3] %}
-                <span class="segment-pill" title="{{ seg.text }}">
+                <span class="segment-pill" title="{{ seg.text }}" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ seg.id }}'">
                     {{ seg.interview_id }} · {{ seg.timecode }}
                     <span class="score {{ seg.delivery_class }}">{{ seg.delivery_score }}</span>
                 </span>
@@ -539,9 +575,11 @@
                     {% for cell in row.cells %}
                     <td>
                         <div class="matrix-cell {{ cell.value }}"
+                             style="cursor: {% if cell.value != 'none' %}pointer{% else %}default{% endif %};"
                              title="{{ cell.segment_id }}: {{ cell.value }}"
                              data-segment="{{ cell.segment_id }}"
-                             data-message="{{ row.message_id }}">
+                             data-message="{{ row.message_id }}"
+                             {% if cell.value != 'none' %}onclick="window.location='review.html#segment-{{ cell.segment_id }}'"{% endif %}>
                             {% if cell.value == 'strong' %}●{% elif cell.value == 'weak' %}○{% else %}·{% endif %}
                         </div>
                     </td>
@@ -601,9 +639,11 @@
     </div>
 </section>
 {% endif %}
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if not missing_brief and not missing_selections %}
 document.querySelectorAll('.matrix-cell').forEach(cell => {
     cell.addEventListener('click', function() {
         const segment = this.dataset.segment;
@@ -611,4 +651,5 @@ document.querySelectorAll('.matrix-cell').forEach(cell => {
         console.log('Segment:', segment, 'Message:', message);
     });
 });
+{% endif %}
 {% endblock %}

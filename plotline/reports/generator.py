@@ -31,6 +31,7 @@ class ReportGenerator:
         template_name: str,
         data: dict[str, Any],
         output_path: Path,
+        manifest: dict[str, Any] | None = None,
     ) -> Path:
         """Render a report template to an HTML file.
 
@@ -38,10 +39,18 @@ class ReportGenerator:
             template_name: Name of the template file
             data: Data dictionary to inject into template
             output_path: Path to write the HTML file
+            manifest: Optional project manifest for populating navigation links
 
         Returns:
             Path to the generated file
         """
+        # Inject navigation interview list for the shared nav bar
+        if manifest and "nav_interviews" not in data:
+            data["nav_interviews"] = [
+                {"id": i.get("id", ""), "filename": i.get("filename", i.get("id", ""))}
+                for i in manifest.get("interviews", [])
+            ]
+
         template = self.env.get_template(template_name)
 
         data_json = json.dumps(data, indent=2, ensure_ascii=False)

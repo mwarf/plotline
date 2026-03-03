@@ -6,6 +6,7 @@ Provides all subcommands for the Plotline pipeline.
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -183,6 +184,7 @@ def add_videos(
                 "stages": {
                     "extracted": False,
                     "transcribed": False,
+                    "diarized": False,
                     "analyzed": False,
                     "enriched": False,
                     "themes": False,
@@ -335,6 +337,137 @@ def transcribe(
 
     if results["failed"] > 0:
         raise typer.Exit(1)
+
+
+# Phase 2.5: Speaker Diarization
+
+
+@app.command("diarize")
+def diarize_speakers(
+    num_speakers: int | None = typer.Option(
+        None, "--num-speakers", "-n", help="Exact number of speakers (if known)"
+    ),
+    min_speakers: int = typer.Option(2, "--min-speakers", help="Minimum speakers to detect"),
+    max_speakers: int = typer.Option(5, "--max-speakers", help="Maximum speakers to detect"),
+    force: bool = typer.Option(False, "--force", "-f", help="Re-diarize already processed files"),
+) -> None:
+    """Identify speakers in audio using pyannote.audio (optional stage).
+
+    Requires pyannote.audio to be installed: pip install plotline[diarization]
+    Requires a HuggingFace token with accepted model terms.
+    """
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    project = Project(project_dir)
+    manifest = project.load_manifest()
+
+    if not manifest.get("interviews"):
+        console.print("[yellow]No interviews found. Run 'plotline add' first.[/yellow]")
+        raise typer.Exit(0)
+
+    try:
+        from plotline.diarize.engine import diarize_all_interviews
+    except ImportError:
+        console.print("[red]Error: diarization dependencies not installed[/red]")
+        console.print("[dim]Install with: pip install plotline[diarization][/dim]")
+        raise typer.Exit(1)
+
+    from plotline.config import load_config
+
+    config = load_config(project_dir)
+
+    model = config.diarization_model
+    if num_speakers is None:
+        num_speakers = config.diarization_num_speakers
+    if min_speakers == 2:
+        min_speakers = config.diarization_min_speakers
+    if max_speakers == 5:
+        max_speakers = config.diarization_max_speakers
+
+    console.print(f"[cyan]Running speaker diarization with {model}...[/cyan]\n")
+
+    results = diarize_all_interviews(
+        project_path=project_dir,
+        manifest=manifest,
+        model=model,
+        num_speakers=num_speakers,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+        force=force,
+        console=console,
+    )
+
+    project.save_manifest(manifest)
+
+    console.print(
+        f"\n[green]✓[/green] Diarized {results['diarized']}, "
+        f"skipped {results['skipped']}, failed {results['failed']}"
+    )
+
+    if results["diarized"] > 0:
+        console.print("\nSpeaker names can be customized in [cyan]speakers.yaml[/cyan]")
+        console.print("Next step: [cyan]plotline analyze[/cyan] (delivery analysis)")
+
+    if results["failed"] > 0:
+        raise typer.Exit(1)
+
+
+@app.command("speakers")
+def manage_speakers(
+    list_speakers: bool = typer.Option(False, "--list", "-l", help="List detected speakers"),
+    edit: bool = typer.Option(False, "--edit", "-e", help="Open speakers.yaml in editor"),
+) -> None:
+    """Manage speaker names and colors.
+
+    View or edit the speakers.yaml file that maps speaker IDs to display names.
+    """
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    from plotline.diarize.speakers import get_all_speakers_from_project, load_speaker_config
+
+    speakers_file = project_dir / "speakers.yaml"
+
+    if edit:
+        import subprocess
+
+        if not speakers_file.exists():
+            console.print("[yellow]No speakers.yaml found. Run 'plotline diarize' first.[/yellow]")
+            raise typer.Exit(1)
+
+        editor = os.environ.get("EDITOR", "nano")
+        subprocess.run([editor, str(speakers_file)])
+        console.print(f"[green]✓[/green] Edited {speakers_file}")
+        return
+
+    speakers = get_all_speakers_from_project(project_dir)
+
+    if not speakers:
+        console.print("[yellow]No speakers detected yet.[/yellow]")
+        console.print("[dim]Run 'plotline diarize' to detect speakers in your interviews.[/dim]")
+        return
+
+    table = Table(title="Speakers")
+    table.add_column("ID", style="dim")
+    table.add_column("Name", style="cyan")
+    table.add_column("Color", style="green")
+
+    for speaker_id, info in sorted(speakers.items()):
+        color = info.get("color", "#808080")
+        name = info.get("name", speaker_id)
+        table.add_row(speaker_id, name, color)
+
+    console.print(table)
+
+    if speakers_file.exists():
+        console.print(f"\n[dim]Edit speaker names: {speakers_file}[/dim]")
+    else:
+        console.print("\n[dim]Run 'plotline diarize' to create speakers.yaml[/dim]")
 
 
 # Phase 3: Delivery Analysis
@@ -718,7 +851,7 @@ def show_status(
 def generate_report(
     report_type: str = typer.Argument(
         "dashboard",
-        help="Report type (dashboard, transcript, review, summary, coverage)",
+        help="Report type (dashboard, transcript, review, summary, coverage, themes, compare, all)",
     ),
     interview: str | None = typer.Option(
         None, "--interview", "-i", help="Interview ID for transcript report"
@@ -788,10 +921,79 @@ def generate_report(
                 manifest=manifest,
                 open_browser=open_browser,
             )
+        elif report_type == "compare":
+            from plotline.reports.compare import generate_compare_report
+            from plotline.config import load_config
+
+            config = load_config(project_dir)
+
+            output_path = generate_compare_report(
+                project_path=project_dir,
+                manifest=manifest,
+                config=config,
+                open_browser=open_browser,
+            )
+        elif report_type == "all":
+            from plotline.reports.dashboard import generate_dashboard
+            from plotline.reports.review import generate_review
+            from plotline.reports.summary import generate_summary
+            from plotline.reports.coverage import generate_coverage
+            from plotline.reports.themes import generate_themes_report
+            from plotline.reports.compare import generate_compare_report
+            from plotline.reports.transcript import generate_transcript
+
+            from plotline.config import load_config
+
+            config = load_config(project_dir)
+
+            output_path = generate_dashboard(project_path=project_dir, manifest=manifest)
+
+            try:
+                generate_review(project_path=project_dir, manifest=manifest)
+            except FileNotFoundError:
+                pass
+
+            try:
+                generate_summary(project_path=project_dir, manifest=manifest)
+            except FileNotFoundError:
+                pass
+
+            generate_coverage(project_path=project_dir, manifest=manifest)
+
+            try:
+                generate_themes_report(project_path=project_dir, manifest=manifest)
+            except FileNotFoundError:
+                pass
+
+            try:
+                generate_compare_report(project_path=project_dir, manifest=manifest, config=config)
+            except FileNotFoundError:
+                pass
+
+            interviews = manifest.get("interviews")
+            if isinstance(interviews, list):
+                for interview in interviews:
+                    if isinstance(interview, dict) and "id" in interview:
+                        try:
+                            generate_transcript(
+                                project_path=project_dir,
+                                manifest=manifest,
+                                interview_id=interview["id"],
+                            )
+                        except FileNotFoundError:
+                            pass
+
+            if open_browser:
+                from plotline.reports.generator import ReportGenerator
+
+                ReportGenerator().open_in_browser(output_path)
+
+            console.print("[green]✓[/green] Generated all reports")
+            return
         else:
             console.print(f"[red]Unknown report type: {report_type}[/red]")
             console.print(
-                "[dim]Valid types: dashboard, review, summary, transcript, coverage, themes[/dim]"
+                "[dim]Valid types: dashboard, review, summary, transcript, coverage, themes, compare, all[/dim]"
             )
             raise typer.Exit(1)
 
@@ -900,6 +1102,10 @@ def run_pipeline(
         console.print("[red]Error: Not in a Plotline project directory[/red]")
         raise typer.Exit(1)
 
+    from plotline.config import load_config
+
+    config = load_config(project_dir)
+
     stages = ["extract", "transcribe", "analyze", "enrich", "themes", "synthesize", "arc"]
     stage_map = {s: i for i, s in enumerate(stages)}
 
@@ -918,6 +1124,9 @@ def run_pipeline(
             extract_audio_cmd(force=False)
         elif stage == "transcribe":
             transcribe(force=False)
+            if config.diarization_enabled:
+                console.print("[dim]Stage: diarize[/dim]")
+                diarize_speakers(force=False)
         elif stage == "analyze":
             analyze_delivery(force=False)
         elif stage == "enrich":
@@ -930,10 +1139,6 @@ def run_pipeline(
             build_arc_cmd(force=False)
         console.print()
 
-    # Post-pipeline: cultural sensitivity flagging (if enabled)
-    from plotline.config import load_config
-
-    config = load_config(project_dir)
     if config.cultural_flags:
         console.print("[dim]Stage: cultural flags[/dim]")
         cultural_flags_cmd(force=False)

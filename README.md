@@ -87,6 +87,7 @@ plotline export --format edl
 | --------------------- | ---------------------------------------------- |
 | `plotline extract`    | Extract audio from videos                      |
 | `plotline transcribe` | Transcribe using Whisper                       |
+| `plotline diarize`    | Identify speakers (optional, requires extra install) |
 | `plotline analyze`    | Analyze emotional delivery                     |
 | `plotline enrich`     | Merge transcript + delivery                    |
 | `plotline themes`     | Extract themes (LLM Pass 1)                    |
@@ -122,6 +123,7 @@ plotline export --format edl
 | `plotline brief <file>` | Attach creative brief (Markdown/YAML)    |
 | `plotline flags`        | Cultural sensitivity flagging (LLM)      |
 | `plotline compare`      | Compare best takes (multi-interview)     |
+| `plotline speakers`     | Manage speaker names and colors          |
 
 ## Pipeline Stages
 
@@ -176,6 +178,55 @@ Four-pass LLM analysis:
 
 Pass 4 runs automatically in `plotline run` when `cultural_flags: true` is set in config. It can also be run standalone with `plotline flags` (use `--force` to run even when disabled in config).
 
+### 5.5. Speaker Diarization (Optional)
+
+Identify speakers in interview audio using pyannote.audio:
+
+```bash
+# Install diarization dependencies
+pip install plotline[diarization]
+
+# Run diarization after transcription
+plotline diarize
+
+# View detected speakers
+plotline speakers --list
+
+# Edit speaker names (opens speakers.yaml in editor)
+plotline speakers --edit
+```
+
+**Requirements:**
+- HuggingFace token with accepted model terms at:
+  - https://huggingface.co/pyannote/segmentation-3.0
+  - https://huggingface.co/pyannote/speaker-diarization-3.1
+- Set token: `export HUGGINGFACE_TOKEN=hf_xxx` or enter when prompted
+
+**Configuration (`plotline.yaml`):**
+```yaml
+diarization_enabled: false           # Enable in run pipeline
+diarization_model: "pyannote/speaker-diarization-3.1"
+diarization_num_speakers: null       # Auto-detect if null
+diarization_min_speakers: 2
+diarization_max_speakers: 5
+```
+
+**Speaker names (`speakers.yaml`):**
+```yaml
+speakers:
+  SPEAKER_00:
+    name: "Interviewer"
+    color: "#3B82F6"
+  SPEAKER_01:
+    name: "Jane Doe"
+    color: "#10B981"
+```
+
+Speaker labels appear in:
+- LLM prompts (themes, synthesis, arc)
+- Review and transcript reports
+- EDL/FCPXML exports (as comments/keywords)
+
 ### 6. Export
 
 Generate timeline files for NLEs:
@@ -207,6 +258,10 @@ handle_padding_frames: 12
 # Cultural sensitivity flagging (default: false)
 # Enabled by default in commercial-doc profile
 cultural_flags: false
+
+# Speaker diarization (optional, requires pip install plotline[diarization])
+diarization_enabled: false
+diarization_model: "pyannote/speaker-diarization-3.1"
 
 # Delivery weights (for scoring)
 delivery_weights:
@@ -412,12 +467,14 @@ my-project/
 ├── interviews.json        # Manifest + stage status
 ├── brief.json             # Parsed creative brief (optional)
 ├── approvals.json         # Review approvals (optional)
+├── speakers.yaml          # Speaker names and colors (optional, auto-generated)
 ├── source/                # Extracted audio
 │   └── interview_001/
 │       ├── audio_16k.wav
 │       └── audio_full.wav
 ├── data/
 │   ├── transcripts/       # Whisper output
+│   ├── diarization/       # Speaker diarization results (optional)
 │   ├── delivery/          # Librosa analysis
 │   ├── segments/          # Enriched segments
 │   ├── themes/            # Per-interview themes

@@ -42,13 +42,13 @@ Target: Q4 2025
 
 ## v0.5.0 — Speaker Intelligence
 
-Target: Q1 2026
+Released: 2026-03-03
 
-| Feature               | Description                                                                             | Status  |
-| --------------------- | --------------------------------------------------------------------------------------- | ------- |
-| Speaker Diarization   | Identify and label different speakers within single interview file.                     | Planned |
-| Speaker Profiles      | Track speaker across multiple interviews. Aggregate their themes and delivery patterns. | Planned |
-| Interviewer Detection | Auto-detect and filter interviewer questions from transcript.                           | Planned |
+| Feature               | Description                                                                             | Status    |
+| --------------------- | --------------------------------------------------------------------------------------- | --------- |
+| Speaker Diarization   | Identify and label different speakers within single interview file.                     | **Done** |
+| Speaker Profiles      | Track speaker across multiple interviews. Aggregate their themes and delivery patterns. | Planned   |
+| Interviewer Detection | Auto-detect and filter interviewer questions from transcript.                           | Planned   |
 
 ---
 

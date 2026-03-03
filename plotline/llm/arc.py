@@ -116,6 +116,7 @@ def create_selections_from_arc(
             "start": source_seg.get("start", 0),
             "end": source_seg.get("end", 0),
             "text": source_seg.get("text", ""),
+            "speaker": source_seg.get("speaker"),
             "role": arc_item.get("role", ""),
             "themes": arc_item.get("themes", []),
             "composite_score": source_seg.get("delivery", {}).get("composite_score", 0),

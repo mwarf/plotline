@@ -2,6 +2,8 @@
 
 {% block title %}{{ project_name }} - Theme Explorer{% endblock %}
 
+{% block nav_themes %}active{% endblock %}
+
 {% block extra_styles %}
 .theme-explorer {
 display: grid;
@@ -434,7 +436,7 @@ align-items: stretch;
             </div>
         </div>
         {% for theme in themes %}
-        <div class="theme-nav-item" data-theme="{{ theme.name }}" onclick="filterByTheme('{{ theme.name | e }}')">
+        <div class="theme-nav-item" id="{{ theme.id }}" data-theme="{{ theme.name }}" onclick="filterByTheme('{{ theme.name | e }}')">
             <div class="theme-color-dot" style="background: {{ theme.color }}"></div>
             <div class="theme-nav-info">
                 <div class="theme-nav-name" title="{{ theme.name }}">{{ theme.name }}</div>
@@ -534,12 +536,19 @@ align-items: stretch;
                                 }}</span>
                             {% endfor %}
                         </div>
-                        {% if seg.audio_path %}
-                        <button class="btn btn-secondary btn-sm"
-                            onclick="event.stopPropagation(); playAudio('{{ seg.audio_path }}', '{{ seg.interview_id }}', '{{ seg.text[:40] }}...')">
-                            ▶ Play
-                        </button>
-                        {% endif %}
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary btn-sm"
+                                onclick="event.stopPropagation(); window.location='transcript_{{ seg.interview_id }}.html#segment-{{ seg.id }}'"
+                                title="View in transcript">
+                                📝 Transcript
+                            </button>
+                            {% if seg.audio_path %}
+                            <button class="btn btn-secondary btn-sm"
+                                onclick="event.stopPropagation(); playAudio('{{ seg.audio_path }}', '{{ seg.interview_id }}', '{{ seg.text[:40] }}...')">
+                                ▶ Play
+                            </button>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 {% endif %}
@@ -693,5 +702,24 @@ card.addEventListener('click', function() {
 document.querySelectorAll('.segment-card').forEach(c => c.classList.remove('active'));
 this.classList.add('active');
 });
+});
+
+// Handle deep links from URL hash
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash) {
+        const hash = window.location.hash.substring(1); // remove '#'
+        const themeItem = document.getElementById(hash);
+        if (themeItem) {
+            const themeName = themeItem.dataset.theme;
+            if (themeName) {
+                filterByTheme(themeName);
+            }
+        } else {
+            // Check if it's a segment hash
+            const segmentId = hash;
+            // The segment hash might not be directly linked to a specific theme action here unless we search it, 
+            // but usually we link to themes.html#{theme_id}
+        }
+    }
 });
 {% endblock %}

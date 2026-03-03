@@ -2,6 +2,48 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [0.3.0] - 2026-03-03
+
+Speaker Intelligence release — pyannote.audio diarization integration.
+
+### Added
+
+#### Speaker Diarization (`plotline diarize`)
+
+- Identify and label different speakers within interview audio using pyannote.audio
+- Word-level speaker assignment via midpoint overlap with diarization segments
+- Segment-level speaker via majority vote across words
+- Optional install: `pip install plotline[diarization]`
+- HuggingFace token management (env var, cache file, interactive prompt)
+- Automatic `speakers.yaml` generation with default names and colors
+- `plotline speakers` command to list and manage speaker configurations
+- Speaker labels propagate through entire pipeline:
+  - Enriched segments include `speaker` field
+  - LLM prompts include speaker context for better arc construction
+  - Review and transcript reports show color-coded speaker badges
+  - EDL exports include `* SPEAKER:` comments
+  - FCPXML exports include speaker keywords and clip name prefixes
+
+#### Configuration
+
+- `diarization_enabled: bool` (default: false) — Enable diarization in `plotline run`
+- `diarization_model: str` — pyannote model name (default: pyannote/speaker-diarization-3.1)
+- `diarization_num_speakers: int | None` — Exact speaker count if known
+- `diarization_min_speakers: int` — Minimum speakers (default: 2)
+- `diarization_max_speakers: int` — Maximum speakers (default: 5)
+
+#### CLI Commands
+
+- `plotline diarize` — Run speaker diarization on transcribed interviews
+- `plotline speakers` — List detected speakers and edit `speakers.yaml`
+
+### Technical Details
+
+- 67 new tests for diarization feature (387 total tests passing)
+- `plotline/diarize/` module with engine, align, and speakers submodules
+- Diarization is fully optional — not a pipeline gate
+- Existing projects without diarization continue to work unchanged
+
 ## [0.2.1] - 2026-02-27
 
 Reporting Polish & Theme Explorer released — interactive theme navigation and reporting suite bug fixes.

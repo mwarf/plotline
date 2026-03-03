@@ -2,6 +2,8 @@
 
 {% block title %}{{ project_name }} - Best-Take Comparison{% endblock %}
 
+{% block nav_compare %}active{% endblock %}
+
 {% block extra_styles %}
 .topic-group {
 margin-bottom: 2rem;
@@ -280,6 +282,11 @@ color: var(--color-text-primary);
 font-size: 0.8125rem;
 color: var(--color-text-secondary);
 margin-top: 0.25rem;
+}
+
+@media print {
+    .topic-group { break-inside: avoid; }
+    .candidate-card { break-inside: avoid; }
 }
 {% endblock %}
 

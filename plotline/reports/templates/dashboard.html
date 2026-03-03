@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block title %}{{ project_name }} - Pipeline
-Dashboard{% endblock %} {% block extra_styles %} .stage-progress { display:
+Dashboard{% endblock %} {% block nav_dashboard %}active{% endblock %} {% block extra_styles %} .stage-progress { display:
 flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem; } .stage-node {
 width: 24px; height: 24px; border-radius: 50%; display: flex; align-items:
 center; justify-content: center; font-size: 0.625rem; font-weight: 600;
@@ -100,7 +100,41 @@ block content %}
     </div>
     <span class="badge badge-success">Attached</span>
   </div>
-  <div class="text-secondary">{{ brief_summary }}</div>
+  {% if brief_summary %}
+  <div class="text-secondary mb-3">{{ brief_summary }}</div>
+  {% endif %}
+  <div class="brief-meta-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+    {% if brief_audience %}
+    <div>
+      <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.25rem;">Target Audience</div>
+      <div style="font-size: 0.875rem;">{{ brief_audience }}</div>
+    </div>
+    {% endif %}
+    {% if brief_tone %}
+    <div>
+      <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.25rem;">Tone & Direction</div>
+      <div style="font-size: 0.875rem;">{{ brief_tone }}</div>
+    </div>
+    {% endif %}
+    {% if brief_target_duration %}
+    <div>
+      <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.25rem;">Target Duration</div>
+      <div style="font-size: 0.875rem;">{{ brief_target_duration }}</div>
+    </div>
+    {% endif %}
+    {% if brief_avoid_topics and brief_avoid_topics|length > 0 %}
+    <div>
+      <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.25rem;">Avoid Topics</div>
+      <div style="font-size: 0.875rem;">
+        <ul style="margin: 0; padding-left: 1rem;">
+          {% for topic in brief_avoid_topics %}
+          <li>{{ topic }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endif %}
 

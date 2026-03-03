@@ -114,3 +114,39 @@ class TestLoadConfig:
     def test_load_missing_config_raises(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError):
             load_config(tmp_path)
+
+
+class TestDiarizationConfig:
+    def test_diarization_defaults(self) -> None:
+        """Test that diarization config has correct defaults."""
+        config = PlotlineConfig()
+        assert config.diarization_enabled is False
+        assert config.diarization_model == "pyannote/speaker-diarization-3.1"
+        assert config.diarization_num_speakers is None
+        assert config.diarization_min_speakers == 2
+        assert config.diarization_max_speakers == 5
+
+    def test_diarization_enabled_can_be_set(self) -> None:
+        """Test that diarization_enabled can be set to True."""
+        config = PlotlineConfig(diarization_enabled=True)
+        assert config.diarization_enabled is True
+
+    def test_diarization_num_speakers_can_be_set(self) -> None:
+        """Test that num_speakers can be set."""
+        config = PlotlineConfig(diarization_num_speakers=3)
+        assert config.diarization_num_speakers == 3
+
+    def test_diarization_min_speakers_validation(self) -> None:
+        """Test that min_speakers must be >= 1."""
+        with pytest.raises(ValueError):
+            PlotlineConfig(diarization_min_speakers=0)
+
+    def test_diarization_max_speakers_validation(self) -> None:
+        """Test that max_speakers must be >= 1."""
+        with pytest.raises(ValueError):
+            PlotlineConfig(diarization_max_speakers=0)
+
+    def test_diarization_custom_model(self) -> None:
+        """Test that custom model can be specified."""
+        config = PlotlineConfig(diarization_model="custom/model")
+        assert config.diarization_model == "custom/model"

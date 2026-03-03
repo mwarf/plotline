@@ -114,6 +114,10 @@ def generate_edl(
         filename = interview.get("filename", "unknown.mov")
         lines.append(f"* FROM CLIP NAME: {filename}")
 
+        speaker = sel.get("speaker")
+        if speaker:
+            lines.append(f"* SPEAKER: {speaker}")
+
         role = sel.get("role", "")
         notes = sel.get("editorial_notes", "")
         if role or notes:

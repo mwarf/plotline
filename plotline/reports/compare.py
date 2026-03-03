@@ -107,7 +107,7 @@ def generate_compare_report(
     }
 
     generator = ReportGenerator()
-    result_path = generator.render("compare.html", data, output_path)
+    result_path = generator.render("compare.html", data, output_path, manifest=manifest)
 
     if open_browser:
         generator.open_in_browser(result_path)

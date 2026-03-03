@@ -160,6 +160,59 @@ class TestMergeTranscriptAndDelivery:
         assert result["source_file"] == "test_video.mp4"
 
 
+class TestMergeSpeakerField:
+    def test_merge_includes_speaker_when_present(self) -> None:
+        """Test that speaker field is passed through when present."""
+        transcript = {
+            "interview_id": "interview_001",
+            "segments": [
+                {
+                    "segment_id": "seg_001",
+                    "start": 0.0,
+                    "end": 5.0,
+                    "text": "Hello world",
+                    "confidence": 0.9,
+                    "corrected": False,
+                    "words": [],
+                    "speaker": "SPEAKER_00",
+                }
+            ],
+        }
+
+        delivery = {
+            "segments": [{"segment_id": "seg_001", "composite_score": 0.5, "delivery_label": ""}]
+        }
+
+        result = merge_transcript_and_delivery(transcript, delivery)
+
+        assert result["segments"][0]["speaker"] == "SPEAKER_00"
+
+    def test_merge_speaker_none_when_not_diarized(self) -> None:
+        """Test that speaker field is None when not present in transcript."""
+        transcript = {
+            "interview_id": "interview_001",
+            "segments": [
+                {
+                    "segment_id": "seg_001",
+                    "start": 0.0,
+                    "end": 5.0,
+                    "text": "Hello world",
+                    "confidence": 0.9,
+                    "corrected": False,
+                    "words": [],
+                }
+            ],
+        }
+
+        delivery = {
+            "segments": [{"segment_id": "seg_001", "composite_score": 0.5, "delivery_label": ""}]
+        }
+
+        result = merge_transcript_and_delivery(transcript, delivery)
+
+        assert result["segments"][0]["speaker"] is None
+
+
 class TestEnrichAllInterviews:
     def test_empty_manifest(self, tmp_path: Path) -> None:
         """Test enrichment with no interviews."""

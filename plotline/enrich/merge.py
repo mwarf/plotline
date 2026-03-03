@@ -43,6 +43,7 @@ def merge_transcript_and_delivery(
             "words": tseg.get("words", []),
             "confidence": tseg.get("confidence", 0),
             "corrected": tseg.get("corrected", False),
+            "speaker": tseg.get("speaker"),
         }
 
         delivery_data = dseg.get("normalized", {})

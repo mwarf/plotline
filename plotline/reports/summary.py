@@ -12,16 +12,7 @@ from typing import Any
 
 from plotline.project import read_json
 from plotline.reports.generator import ReportGenerator
-
-
-def format_duration(seconds: float) -> str:
-    """Format seconds as HH:MM or MM:SS."""
-    if seconds >= 3600:
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        return f"{hours}h {minutes}m"
-    minutes = int(seconds // 60)
-    return f"{minutes}m"
+from plotline.utils import format_duration_friendly as format_duration
 
 
 def generate_summary(
@@ -86,9 +77,10 @@ def generate_summary(
     synthesis_path = project_path / "data" / "synthesis.json"
     if synthesis_path.exists():
         synthesis = read_json(synthesis_path)
-        for theme in synthesis.get("themes", [])[:10]:
+        for theme in synthesis.get("unified_themes", [])[:10]:
             themes_data.append(
                 {
+                    "id": theme.get("unified_theme_id", ""),
                     "name": theme.get("name", ""),
                     "size": min(3, (theme.get("segment_count", 0) // 5) + 1),
                 }
@@ -107,6 +99,7 @@ def generate_summary(
             role_class = "body"
         arc_segments.append(
             {
+                "id": seg.get("segment_id", ""),
                 "role": seg.get("role", "Body"),
                 "role_class": role_class,
                 "text": seg.get("text", "")[:100]
@@ -122,6 +115,7 @@ def generate_summary(
         interview = interviews_map.get(seg.get("interview_id", ""), {})
         highlights.append(
             {
+                "id": seg.get("segment_id", ""),
                 "score": f"{seg.get('composite_score', 0):.2f}",
                 "text": seg.get("text", "")[:80],
                 "filename": interview.get("filename", "Unknown"),
@@ -150,7 +144,7 @@ def generate_summary(
     }
 
     generator = ReportGenerator()
-    result_path = generator.render("summary.html", data, output_path)
+    result_path = generator.render("summary.html", data, output_path, manifest=manifest)
 
     if open_browser:
         generator.open_in_browser(result_path)

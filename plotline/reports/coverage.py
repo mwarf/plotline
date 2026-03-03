@@ -308,13 +308,29 @@ def generate_coverage(
     if output_path is None:
         output_path = project_path / "reports" / "coverage.html"
 
+    generator = ReportGenerator()
+    
     brief_path = project_path / "brief.json"
     if not brief_path.exists():
-        raise FileNotFoundError("No brief attached. Use 'plotline brief <file>' to attach one.")
+        data = {
+            "project_name": manifest.get("project_name", "Plotline Project"),
+            "missing_brief": True
+        }
+        result_path = generator.render("coverage.html", data, output_path, manifest=manifest)
+        if open_browser:
+            generator.open_in_browser(result_path)
+        return result_path
 
     selections_path = project_path / "data" / "selections.json"
     if not selections_path.exists():
-        raise FileNotFoundError("No selections found. Run 'plotline arc' first.")
+        data = {
+            "project_name": manifest.get("project_name", "Plotline Project"),
+            "missing_selections": True
+        }
+        result_path = generator.render("coverage.html", data, output_path, manifest=manifest)
+        if open_browser:
+            generator.open_in_browser(result_path)
+        return result_path
 
     brief_data = read_json(brief_path)
     selections_data = read_json(selections_path)
@@ -357,10 +373,11 @@ def generate_coverage(
         "must_include_status": coverage_data["must_include_status"],
         "has_must_include": len(coverage_data["must_include_status"]) > 0,
         "total_segments": len(coverage_data["matrix_columns"]),
+        "missing_brief": False,
+        "missing_selections": False,
     }
 
-    generator = ReportGenerator()
-    result_path = generator.render("coverage.html", data, output_path)
+    result_path = generator.render("coverage.html", data, output_path, manifest=manifest)
 
     if open_browser:
         generator.open_in_browser(result_path)

@@ -326,6 +326,97 @@
       .gap-2 { gap: 0.5rem; }
       .gap-4 { gap: 1rem; }
 
+      /* Navigation bar */
+      .plotline-nav {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.5rem 1rem;
+          background: var(--color-bg-secondary);
+          border-bottom: 1px solid var(--color-border);
+          font-size: 0.8125rem;
+          overflow-x: auto;
+          white-space: nowrap;
+      }
+
+      .plotline-nav-brand {
+          font-weight: 600;
+          color: var(--color-text-primary);
+          margin-right: 0.75rem;
+          text-decoration: none;
+          flex-shrink: 0;
+      }
+
+      .plotline-nav-link {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.375rem 0.625rem;
+          border-radius: var(--radius-md);
+          color: var(--color-text-secondary);
+          text-decoration: none;
+          transition: all var(--transition-fast);
+          flex-shrink: 0;
+      }
+
+      .plotline-nav-link:hover {
+          background: var(--color-bg-tertiary);
+          color: var(--color-text-primary);
+      }
+
+      .plotline-nav-link.active {
+          background: var(--color-accent-primary);
+          color: white;
+      }
+
+      .plotline-nav-sep {
+          width: 1px;
+          height: 16px;
+          background: var(--color-border);
+          margin: 0 0.25rem;
+          flex-shrink: 0;
+      }
+
+      .plotline-nav-dropdown {
+          position: relative;
+          flex-shrink: 0;
+      }
+
+      .plotline-nav-dropdown-menu {
+          display: none;
+          position: absolute;
+          top: 100%;
+          left: 0;
+          margin-top: 0.25rem;
+          background: var(--color-bg-secondary);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          min-width: 200px;
+          z-index: 1001;
+          box-shadow: var(--shadow-lg);
+          padding: 0.25rem;
+      }
+
+      .plotline-nav-dropdown-menu.open {
+          display: block;
+      }
+
+      .plotline-nav-dropdown-item {
+          display: block;
+          padding: 0.375rem 0.625rem;
+          color: var(--color-text-secondary);
+          text-decoration: none;
+          border-radius: var(--radius-sm);
+          font-size: 0.8125rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+      }
+
+      .plotline-nav-dropdown-item:hover {
+          background: var(--color-bg-tertiary);
+          color: var(--color-text-primary);
+      }
+
       @media print {
           body {
               background: white;
@@ -339,20 +430,59 @@
           .no-print {
               display: none !important;
           }
+          .plotline-nav {
+              display: none !important;
+          }
           .container {
               max-width: 100%;
               padding: 0;
           }
       }
 
+      @media (max-width: 640px) {
+          .plotline-nav { padding: 0.375rem 0.5rem; font-size: 0.75rem; }
+          .plotline-nav-link { padding: 0.25rem 0.5rem; }
+      }
+
       {% block extra_styles %}{% endblock %}
     </style>
   </head>
   <body>
+    <nav class="plotline-nav no-print" role="navigation" aria-label="Report navigation">
+        <a class="plotline-nav-brand" href="dashboard.html">Plotline</a>
+        <a class="plotline-nav-link {% block nav_dashboard %}{% endblock %}" href="dashboard.html">Dashboard</a>
+        <div class="plotline-nav-dropdown">
+            <a class="plotline-nav-link {% block nav_transcript %}{% endblock %}" href="#" aria-haspopup="true" aria-expanded="false" onclick="event.preventDefault(); const menu = this.nextElementSibling; const isOpen = menu.classList.toggle('open'); this.setAttribute('aria-expanded', isOpen);">Transcripts</a>
+            <div class="plotline-nav-dropdown-menu" id="transcriptDropdown" role="menu">
+                {% if data.nav_interviews is defined and data.nav_interviews %}
+                {% for nav_i in data.nav_interviews %}
+                <a class="plotline-nav-dropdown-item" href="transcript_{{ nav_i.id }}.html" role="menuitem">{{ nav_i.filename }}</a>
+                {% endfor %}
+                {% else %}
+                <span class="plotline-nav-dropdown-item" style="color: var(--color-text-muted);" role="menuitem">No interviews</span>
+                {% endif %}
+            </div>
+        </div>
+        <a class="plotline-nav-link {% block nav_themes %}{% endblock %}" href="themes.html">Themes</a>
+        <a class="plotline-nav-link {% block nav_compare %}{% endblock %}" href="compare.html">Compare</a>
+        <a class="plotline-nav-link {% block nav_coverage %}{% endblock %}" href="coverage.html">Coverage</a>
+        <div class="plotline-nav-sep"></div>
+        <a class="plotline-nav-link {% block nav_review %}{% endblock %}" href="review.html">Review</a>
+        <a class="plotline-nav-link {% block nav_summary %}{% endblock %}" href="summary.html">Summary</a>
+    </nav>
     <div class="container">{% block content %}{% endblock %}</div>
 
     <script>
       const reportData = {{ data_json | safe }};
+
+      // Close nav dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+          if (!e.target.closest('.plotline-nav-dropdown')) {
+              document.querySelectorAll('.plotline-nav-dropdown-menu').forEach(function(m) {
+                  m.classList.remove('open');
+              });
+          }
+      });
 
       {% block scripts %}{% endblock %}
     </script>

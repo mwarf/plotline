@@ -13,7 +13,7 @@ from typing import Any
 from plotline.export.timecode import seconds_to_timecode
 from plotline.project import read_json
 from plotline.reports.generator import ReportGenerator
-from plotline.utils import format_duration, get_delivery_class
+from plotline.utils import format_duration, get_delivery_class, get_theme_color
 
 
 def get_confidence_class(confidence: float) -> str:
@@ -42,19 +42,18 @@ def build_theme_map(themes_data: dict[str, Any] | None) -> dict[str, list[str]]:
     return segment_to_themes
 
 
-def get_theme_color(index: int) -> str:
-    """Get a consistent color for a theme by index."""
-    colors = [
-        "#3b82f6",
-        "#8b5cf6",
-        "#06b6d4",
-        "#22c55e",
-        "#f59e0b",
-        "#ef4444",
-        "#ec4899",
-        "#14b8a6",
-    ]
-    return colors[index % len(colors)]
+def load_speaker_config(project_path: Path) -> dict[str, dict[str, str]]:
+    """Load speaker configuration for display names and colors.
+
+    Args:
+        project_path: Path to project directory
+
+    Returns:
+        Dict mapping speaker ID -> {name, color}
+    """
+    from plotline.diarize.speakers import get_all_speakers_from_project
+
+    return get_all_speakers_from_project(project_path)
 
 
 def generate_transcript(
@@ -95,6 +94,9 @@ def generate_transcript(
 
     theme_map = build_theme_map(themes_data)
 
+    speaker_config = load_speaker_config(project_path)
+    has_speakers = bool(speaker_config)
+
     interview_meta = None
     for interview in manifest.get("interviews", []):
         if interview.get("id") == interview_id:
@@ -129,6 +131,9 @@ def generate_transcript(
         delivery_score = delivery.get("composite_score", 0.5)
         energy = delivery.get("energy", 0.5)
         speech_rate = delivery.get("speech_rate", 0.5)
+        pitch_variation = delivery.get("pitch_variation", 0.0)
+        pause_weight = delivery.get("pause_weight", 0.0)
+        spectral_brightness = delivery.get("spectral_brightness", 0.0)
         delivery_label = delivery.get("delivery_label", "")
 
         confidence = segment.get("confidence", 1.0)
@@ -138,6 +143,11 @@ def generate_transcript(
         audio_path = None
         if interview_meta.get("audio_full_path"):
             audio_path = f"../{interview_meta['audio_full_path']}#t={max(0, start - 2)}"
+
+        speaker_id = segment.get("speaker")
+        speaker_info = speaker_config.get(speaker_id, {}) if speaker_id else None
+        speaker_name = speaker_info.get("name", speaker_id) if speaker_info else None
+        speaker_color = speaker_info.get("color", "#808080") if speaker_info else None
 
         segments_list.append(
             {
@@ -157,9 +167,15 @@ def generate_transcript(
                 "delivery_label": delivery_label,
                 "energy": energy,
                 "speech_rate": speech_rate,
+                "pitch_variation": pitch_variation,
+                "pause_weight": pause_weight,
+                "spectral_brightness": spectral_brightness,
                 "themes": segment_themes,
                 "theme_colors": [theme_colors.get(t, "#64748b") for t in segment_themes],
                 "audio_path": audio_path,
+                "speaker_id": speaker_id,
+                "speaker_name": speaker_name,
+                "speaker_color": speaker_color,
             }
         )
 
@@ -171,6 +187,9 @@ def generate_transcript(
                 "duration": duration,
                 "energy": energy,
                 "speech_rate": speech_rate,
+                "pitch_variation": pitch_variation,
+                "pause_weight": pause_weight,
+                "spectral_brightness": spectral_brightness,
                 "delivery_score": delivery_score,
             }
         )
@@ -198,10 +217,11 @@ def generate_transcript(
         "segments": segments_list,
         "timeline_data": timeline_data,
         "has_delivery": any(s.get("delivery_score") != 0.5 for s in segments_list),
+        "has_speakers": has_speakers,
     }
 
     generator = ReportGenerator()
-    result_path = generator.render("transcript.html", data, output_path)
+    result_path = generator.render("transcript.html", data, output_path, manifest=manifest)
 
     if open_browser:
         generator.open_in_browser(result_path)

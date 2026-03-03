@@ -2,6 +2,8 @@
 
 {% block title %}{{ interview_id }} - Transcript{% endblock %}
 
+{% block nav_transcript %}active{% endblock %}
+
 {% block extra_styles %}
 .header-info {
     display: flex;
@@ -233,6 +235,15 @@
     color: white;
 }
 
+.speaker-pill {
+    font-size: 0.7rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    margin-left: 0.5rem;
+}
+
 .segment-actions {
     display: flex;
     gap: 0.5rem;
@@ -400,6 +411,14 @@
 
 {% if has_delivery %}
 <div class="timeline-container no-print">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <div class="filters">
+            <button class="btn btn-secondary filter-btn active" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" data-filter="all" onclick="filterSegments('all')">All</button>
+            <button class="btn btn-secondary filter-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" data-filter="high" onclick="filterSegments('high')">High Score</button>
+            <button class="btn btn-secondary filter-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" data-filter="low" onclick="filterSegments('low')">Low Score</button>
+        </div>
+        <input type="text" id="searchInput" placeholder="Search transcript..." style="padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary); font-size: 0.75rem;" onkeyup="applySearch()">
+    </div>
     <div class="delivery-timeline" id="timeline"></div>
     <div class="timeline-axis" id="timelineAxis"></div>
     <div class="timeline-legend">
@@ -432,11 +451,15 @@
 <div class="segment-card {% if segment.confidence < 0.7 %}low-confidence{% endif %}"
      data-index="{{ segment.index }}"
      data-segment-id="{{ segment.id }}"
+     data-delivery-class="{{ segment.delivery_class }}"
      id="segment-{{ segment.index }}">
     <div class="segment-header">
         <div class="segment-meta">
             <span class="segment-number">#{{ segment.index }}</span>
             <span class="segment-timecode">{{ segment.timecode }}</span>
+            {% if segment.speaker_name %}
+            <span class="speaker-pill" style="border-left: 3px solid {{ segment.speaker_color }};">{{ segment.speaker_name }}</span>
+            {% endif %}
             {% if segment.confidence < 0.7 %}
             <span class="segment-confidence" title="Low transcription confidence">
                 {{ (segment.confidence * 100)|round }}% confident
@@ -455,14 +478,23 @@
         </div>
     </div>
     <div class="segment-text">"{{ segment.text }}"</div>
+    {% if segment.delivery_score != 0.5 or segment.energy != 0.5 %}
+    <div class="segment-metrics" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; font-size: 0.7rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">
+        <div style="display: flex; gap: 0.75rem; font-family: var(--font-mono);">
+            <span title="Energy">⚡ {{(segment.energy * 100)|int}}%</span>
+            <span title="Speech Rate">🗣️ {{(segment.speech_rate * 100)|int}}%</span>
+            <span title="Pitch Variation">🎵 {{(segment.pitch_variation * 100)|int}}%</span>
+            <span title="Pause Weight">⏸️ {{(segment.pause_weight * 100)|int}}%</span>
+            <span title="Spectral Brightness">🔆 {{(segment.spectral_brightness * 100)|int}}%</span>
+        </div>
+        <span class="delivery-label" style="font-style: italic;">{{ segment.delivery_label }}</span>
+    </div>
+    {% endif %}
     <div class="segment-footer">
         <div class="segment-themes">
             {% for theme in segment.themes %}
             <span class="theme-pill" style="background: {{ segment.theme_colors[loop.index0] }}">{{ theme }}</span>
             {% endfor %}
-            {% if not segment.themes %}
-            <span class="delivery-label">{{ segment.delivery_label }}</span>
-            {% endif %}
         </div>
         <div class="segment-actions no-print">
             {% if segment.audio_path %}
@@ -539,9 +571,17 @@ function buildTimeline() {
     });
 }
 
-function scrollToSegment(index) {
-    const card = document.getElementById('segment-' + index);
+function scrollToSegment(idOrIndex) {
+    let card = document.getElementById('segment-' + idOrIndex);
+    if (!card) {
+        // Try finding by index if an ID was passed, or vice versa
+        // Let's find it by data-segment-id if idOrIndex is a string starting with something else
+        card = document.querySelector(`.segment-card[data-segment-id="${idOrIndex}"]`);
+    }
+    
     if (!card) return;
+
+    const index = parseInt(card.dataset.index);
 
     document.querySelectorAll('.segment-card').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('active'));
@@ -553,6 +593,41 @@ function scrollToSegment(index) {
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     activeSegmentIndex = index;
 }
+
+function filterSegments(filter) {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    applySearch();
+}
+
+function applySearch() {
+    const activeFilterBtn = document.querySelector('.filter-btn.active');
+    const filter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+    const searchInput = document.getElementById('searchInput');
+    const searchText = searchInput ? searchInput.value.toLowerCase() : '';
+
+    document.querySelectorAll('.segment-card').forEach(card => {
+        const deliveryClass = card.dataset.deliveryClass || '';
+        const text = (card.querySelector('.segment-text')?.textContent || '').toLowerCase();
+        
+        const matchesFilter = filter === 'all' || deliveryClass === filter;
+        const matchesSearch = !searchText || text.includes(searchText);
+
+        card.style.display = matchesFilter && matchesSearch ? '' : 'none';
+    });
+}
+
+// Support for deep linking from URL
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash) {
+        const hash = window.location.hash.substring(1); // remove '#'
+        if (hash.startsWith('segment-')) {
+            const id = hash.substring(8); // remove 'segment-'
+            setTimeout(() => scrollToSegment(id), 100);
+        }
+    }
+});
 
 function playAudio(path, segmentIndex, textPreview) {
     const audio = document.getElementById('audioElement');
