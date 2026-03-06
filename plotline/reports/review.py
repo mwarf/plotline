@@ -197,6 +197,18 @@ def generate_review(
     reviewed_count = approved_count + rejected_count + flagged_count
     progress_percent = (reviewed_count / total_segments * 100) if total_segments > 0 else 0
 
+    interviews_data = {
+        interview["id"]: {
+            "id": interview["id"],
+            "filename": interview["filename"],
+            "frame_rate": interview.get("frame_rate", 24),
+            "duration_seconds": interview.get("duration_seconds", 0),
+            "start_timecode": interview.get("start_timecode"),
+            "resolution": interview.get("resolution", "1920x1080"),
+        }
+        for interview in manifest.get("interviews", [])
+    }
+
     data = {
         "project_name": manifest.get("project_name", "Plotline Project"),
         "total_segments": total_segments,
@@ -208,6 +220,7 @@ def generate_review(
         "progress_percent": round(progress_percent, 1),
         "segments": segments_data,
         "has_speakers": has_speakers,
+        "interviews": interviews_data,
     }
 
     generator = ReportGenerator()

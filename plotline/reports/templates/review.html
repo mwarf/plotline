@@ -57,9 +57,18 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
     </p>
   </div>
   <div class="header-meta no-print">
-    <button class="btn btn-primary" onclick="exportApproved()">
-      Export Approved ({{ approved_count }})
-    </button>
+    <div class="export-controls" style="display: flex; gap: 0.5rem; align-items: center;">
+      <select id="exportFormat" class="btn btn-secondary" style="padding: 0.5rem 1rem; cursor: pointer;">
+        <option value="edl">EDL (DaVinci/Premiere)</option>
+        <option value="fcpxml">FCPXML (Final Cut Pro)</option>
+      </select>
+      <input type="number" id="handleFrames" value="12" min="0" max="120" 
+             class="btn btn-secondary" style="width: 70px; text-align: center;"
+             title="Handle frames (12 = 0.5s at 24fps)">
+      <button class="btn btn-primary" onclick="exportApproved()">
+        Export ({{ approved_count }})
+      </button>
+    </div>
   </div>
 </div>
 
@@ -423,42 +432,217 @@ const fill = document.querySelector('.progress-bar-fill');
 if (fill) fill.style.width = pct.toFixed(1) + '%';
 // Keep the header Export button count in sync
 const exportBtn = document.querySelector('.btn-primary[onclick="exportApproved()"]');
-if (exportBtn) exportBtn.textContent = 'Export Approved (' + approved + ')';
+if (exportBtn) exportBtn.textContent = 'Export (' + approved + ')';
 }
 
-// Bug fix: these reports are opened as local files (file:// protocol).
-// fetch() PUT calls are blocked by the browser under file://. Instead, we:
-// 1. persist to localStorage (survives page refresh)
-// 2. on Export, download approvals.json and prompt the user to run `plotline export`
-function exportApproved() {
-const payload = buildApprovalsPayload();
-if (payload.approved === 0) {
-alert('No segments are approved yet.\n\nApprove at least one segment before exporting.');
-return;
+// Timecode conversion utilities
+function secondsToNDFTimecode(seconds, fps) {
+    const totalFrames = Math.round(seconds * fps);
+    const framesPerSecond = Math.round(fps);
+    const ff = totalFrames % framesPerSecond;
+    const totalSeconds = Math.floor(totalFrames / framesPerSecond);
+    const ss = totalSeconds % 60;
+    const mm = Math.floor(totalSeconds / 60) % 60;
+    const hh = Math.floor(totalSeconds / 3600);
+    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}:${String(ff).padStart(2,'0')}`;
 }
-// Persist to localStorage
-try {
-localStorage.setItem('plotline_approvals_{{ project_name }}', JSON.stringify(payload));
-} catch(e) {}
-// Trigger download of approvals.json
-const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'approvals.json';
-document.body.appendChild(a);
-a.click();
-document.body.removeChild(a);
-URL.revokeObjectURL(url);
-// Guide the user to the CLI export step
-setTimeout(() => {
-alert(
-'approvals.json downloaded! (' + payload.approved + ' approved)\n\n' +
-'Move it to your project folder (replacing the existing one), then run:\n\n' +
-' plotline export --format edl\n\n' +
-'to generate your EDL file.'
-);
-}, 300);
+
+function secondsToDFTimecode(seconds) {
+    const fps = 29.97;
+    const frameCount = Math.round(seconds * fps);
+    const d = Math.floor(frameCount / 17982);
+    const m = frameCount % 17982;
+    let adjustment = 0;
+    if (m >= 2) {
+        adjustment = 2 * Math.floor((m - 2) / 1798);
+    }
+    const adjustedFrames = frameCount + 18 * d + adjustment;
+    const ff = adjustedFrames % 30;
+    const ss = Math.floor(adjustedFrames / 30) % 60;
+    const mm = Math.floor(adjustedFrames / 1800) % 60;
+    const hh = Math.floor(adjustedFrames / 108000);
+    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')};${String(ff).padStart(2,'0')}`;
+}
+
+function secondsToTimecode(seconds, fps, dropFrame) {
+    if (dropFrame && Math.abs(fps - 29.97) < 0.01) {
+        return secondsToDFTimecode(seconds);
+    }
+    return secondsToNDFTimecode(seconds, fps);
+}
+
+function isDropFrameFPS(fps) {
+    return Math.abs(fps - 29.97) < 0.01;
+}
+
+// EDL Generator
+function generateEDL(approvals, interviews, handleFrames, projectName) {
+    const lines = [];
+    
+    let fps = 24;
+    let dropFrame = false;
+    approvals.forEach(sel => {
+        const interview = interviews[sel.interview_id];
+        if (interview) {
+            fps = interview.frame_rate || 24;
+            if (isDropFrameFPS(fps)) dropFrame = true;
+        }
+    });
+    
+    const fcm = dropFrame ? "DROP FRAME" : "NON-DROP FRAME";
+    lines.push(`TITLE: Plotline Selects - ${projectName}`);
+    lines.push(`FCM: ${fcm}`);
+    lines.push("");
+    
+    const reelMapping = {};
+    let reelCounter = 1;
+    approvals.forEach(sel => {
+        const interviewId = sel.interview_id;
+        if (!(interviewId in reelMapping)) {
+            const reelName = interviewId.length >= 8 ? interviewId.substring(0, 8) : `R${String(reelCounter).padStart(3,'0')}`;
+            reelMapping[interviewId] = reelName;
+            reelCounter++;
+        }
+    });
+    
+    if (Object.keys(reelMapping).length > 1) {
+        lines.push("* REEL MAPPING:");
+        for (const [interviewId, reelName] of Object.entries(reelMapping)) {
+            const interview = interviews[interviewId];
+            const filename = interview ? interview.filename : interviewId;
+            lines.push(`* ${reelName} = ${filename}`);
+        }
+        lines.push("");
+    }
+    
+    let recFrameCounter = 3600 * fps;
+    
+    approvals.forEach((sel, i) => {
+        const interview = interviews[sel.interview_id] || {};
+        const interviewFps = interview.frame_rate || fps;
+        const interviewDrop = isDropFrameFPS(interviewFps);
+        
+        const reel = reelMapping[sel.interview_id] || "R001";
+        
+        let srcStart = sel.start || 0;
+        let srcEnd = sel.end || 0;
+        
+        const handleSec = handleFrames / interviewFps;
+        let paddedStart = Math.max(0, srcStart - handleSec);
+        const interviewDuration = interview.duration_seconds || srcEnd;
+        let paddedEnd = Math.min(interviewDuration, srcEnd + handleSec);
+        
+        let offsetSeconds = 0;
+        if (interview.start_timecode) {
+            const parts = interview.start_timecode.replace(';', ':').split(':');
+            if (parts.length === 4) {
+                offsetSeconds = (parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2])) + parseInt(parts[3]) / interviewFps;
+            }
+        }
+        
+        const absoluteStart = offsetSeconds + paddedStart;
+        const absoluteEnd = offsetSeconds + paddedEnd;
+        
+        const srcInTC = secondsToTimecode(absoluteStart, interviewFps, interviewDrop);
+        const srcOutTC = secondsToTimecode(absoluteEnd, interviewFps, interviewDrop);
+        
+        const clipDurationFrames = Math.round((paddedEnd - paddedStart) * fps);
+        const recInTC = secondsToTimecode(recFrameCounter / fps, fps, dropFrame);
+        const recOutFrame = recFrameCounter + clipDurationFrames;
+        const recOutTC = secondsToTimecode(recOutFrame / fps, fps, dropFrame);
+        recFrameCounter = recOutFrame;
+        
+        const eventNum = String(i + 1).padStart(3, '0');
+        lines.push(`${eventNum}  ${reel.padEnd(8)} V     C    ${srcInTC} ${srcOutTC} ${recInTC} ${recOutTC}`);
+        
+        lines.push(`${eventNum}  ${reel.padEnd(8)} A1    C    ${srcInTC} ${srcOutTC} ${recInTC} ${recOutTC}`);
+        lines.push(`${eventNum}  ${reel.padEnd(8)} A2    C    ${srcInTC} ${srcOutTC} ${recInTC} ${recOutTC}`);
+        
+        const filename = interview.filename || "unknown.mov";
+        lines.push(`* FROM CLIP NAME: ${filename}`);
+        
+        if (sel.speaker) {
+            lines.push(`* SPEAKER: ${sel.speaker}`);
+        }
+        
+        const role = sel.role || "";
+        const notes = sel.editorial_notes || "";
+        if (role || notes) {
+            const comment = role ? `[${role}] ${notes}` : notes;
+            lines.push(`* COMMENT: ${comment.substring(0, 80)}`);
+        }
+        
+        lines.push("");
+    });
+    
+    return lines.join("\n");
+}
+
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function exportApproved() {
+    const format = document.getElementById('exportFormat').value;
+    const handleFrames = parseInt(document.getElementById('handleFrames').value) || 12;
+    
+    const payload = buildApprovalsPayload();
+    if (payload.approved === 0) {
+        alert('No segments are approved yet.\n\nApprove at least one segment before exporting.');
+        return;
+    }
+    
+    try {
+        localStorage.setItem('plotline_approvals_{{ project_name }}', JSON.stringify(payload));
+    } catch(e) {}
+    
+    if (format === 'edl') {
+        const approvalsWithMeta = payload.segments
+            .filter(s => s.status === 'approved')
+            .map(entry => {
+                const segData = reportData.segments.find(s => s.id === entry.segment_id);
+                if (!segData) return null;
+                const interviewId = segData.id.split('_seg_')[0];
+                return {
+                    segment_id: entry.segment_id,
+                    interview_id: interviewId,
+                    start: segData.start,
+                    end: segData.end,
+                    role: segData.role,
+                    editorial_notes: segData.editorial_notes,
+                    speaker: segData.speaker_name,
+                    position: entry.position
+                };
+            })
+            .filter(s => s !== null)
+            .sort((a, b) => a.position - b.position);
+        
+        const edlContent = generateEDL(approvalsWithMeta, reportData.interviews, handleFrames, reportData.project_name);
+        
+        downloadFile(edlContent, `${reportData.project_name}.edl`, 'text/plain');
+        downloadFile(JSON.stringify(payload, null, 2), 'approvals.json', 'application/json');
+        
+        alert(`EDL exported successfully!\n\n${payload.approved} segments → ${reportData.project_name}.edl\nHandle: ${handleFrames} frames`);
+    } else {
+        downloadFile(JSON.stringify(payload, null, 2), 'approvals.json', 'application/json');
+        
+        setTimeout(() => {
+            alert(
+                `approvals.json downloaded! (${payload.approved} approved)\n\n` +
+                `Move it to your project folder (replacing existing), then run:\n\n` +
+                `plotline export --format fcpxml --handle ${handleFrames}\n\n` +
+                `to generate your FCPXML file.`
+            );
+        }, 300);
+    }
 }
 
 document.addEventListener('keydown', (e) => {

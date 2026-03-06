@@ -111,6 +111,15 @@ def generate_edl(
         )
         lines.append(event_line)
 
+        audio_line_1 = (
+            f"{i:03d}  {reel:<8s} A1    C    {src_in_tc} {src_out_tc} {rec_in_tc} {rec_out_tc}"
+        )
+        audio_line_2 = (
+            f"{i:03d}  {reel:<8s} A2    C    {src_in_tc} {src_out_tc} {rec_in_tc} {rec_out_tc}"
+        )
+        lines.append(audio_line_1)
+        lines.append(audio_line_2)
+
         filename = interview.get("filename", "unknown.mov")
         lines.append(f"* FROM CLIP NAME: {filename}")
 
