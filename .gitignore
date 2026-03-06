@@ -64,6 +64,11 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+*.bak
+
+# Test/example project directories
+Nirvana/
+test-doc/
 
 # Environment files (may contain API keys)
 .env
