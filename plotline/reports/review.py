@@ -169,6 +169,7 @@ def generate_review(
         segments_data.append(
             {
                 "id": segment_id,
+                "interview_id": interview_id,
                 "position": position,
                 "role": segment.get("role", "body").title(),
                 "text": segment.get("text", ""),

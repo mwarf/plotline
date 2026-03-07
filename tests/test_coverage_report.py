@@ -333,28 +333,26 @@ class TestAnalyzeCoverage:
 
 
 class TestGenerateCoverage:
-    def test_missing_brief_raises(self, tmp_project: Path) -> None:
-        """Test error when brief is missing."""
+    def test_missing_brief_renders_gracefully(self, tmp_project: Path) -> None:
+        """Test graceful rendering when brief is missing."""
         manifest = {"project_name": "test"}
 
-        try:
-            generate_coverage(tmp_project, manifest)
-            assert False, "Should have raised FileNotFoundError"
-        except FileNotFoundError as e:
-            assert "brief" in str(e).lower()
+        output_path = generate_coverage(tmp_project, manifest)
+        assert output_path.exists()
+        content = output_path.read_text()
+        assert "No Brief Attached" in content
 
-    def test_missing_selections_raises(self, tmp_project: Path) -> None:
-        """Test error when selections are missing."""
+    def test_missing_selections_renders_gracefully(self, tmp_project: Path) -> None:
+        """Test graceful rendering when selections are missing."""
         brief_path = tmp_project / "brief.json"
         brief_path.write_text(json.dumps({"key_messages": [{"id": "msg_001", "text": "Test"}]}))
 
         manifest = {"project_name": "test"}
 
-        try:
-            generate_coverage(tmp_project, manifest)
-            assert False, "Should have raised FileNotFoundError"
-        except FileNotFoundError as e:
-            assert "selections" in str(e).lower()
+        output_path = generate_coverage(tmp_project, manifest)
+        assert output_path.exists()
+        content = output_path.read_text()
+        assert "No Selections Found" in content
 
     def test_generates_report(self, tmp_project: Path) -> None:
         """Test successful report generation."""

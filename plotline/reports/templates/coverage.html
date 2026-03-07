@@ -171,7 +171,7 @@
     font-weight: 600;
 }
 
-.segment-pill .score.high { color: var(--color-success); }
+.segment-pill .score.filled { color: var(--color-success); }
 .segment-pill .score.medium { color: var(--color-warning); }
 .segment-pill .score.low { color: var(--color-error); }
 
@@ -493,7 +493,7 @@
             <div class="segments-label">Strong matches</div>
             <div class="segment-pills">
                 {% for seg in message.strong_segments[:5] %}
-                <span class="segment-pill" title="{{ seg.text }}" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ seg.id }}'">
+                <span class="segment-pill" title="{{ seg.text }}" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ seg.segment_id }}'">
                     {{ seg.interview_id }} · {{ seg.timecode }}
                     <span class="score {{ seg.delivery_class }}">{{ seg.delivery_score }}</span>
                 </span>
@@ -510,7 +510,7 @@
             <div class="segments-label">Theme-level matches</div>
             <div class="segment-pills">
                 {% for seg in message.weak_segments[:3] %}
-                <span class="segment-pill" title="{{ seg.text }}" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ seg.id }}'">
+                <span class="segment-pill" title="{{ seg.text }}" style="cursor: pointer;" onclick="window.location='review.html#segment-{{ seg.segment_id }}'">
                     {{ seg.interview_id }} · {{ seg.timecode }}
                     <span class="score {{ seg.delivery_class }}">{{ seg.delivery_score }}</span>
                 </span>

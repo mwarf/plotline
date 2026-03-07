@@ -2,6 +2,35 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [0.3.3] - 2026-03-07
+
+Report audit — fixed 8 critical/high-impact bugs across all 7 report stages.
+
+### Fixed
+
+#### Cross-Report: Delivery Filter Mismatch
+- **CRITICAL**: "High Score" / "High" delivery filter buttons never matched any segment — `get_delivery_class()` returns `"filled"` but filters checked for `"high"`. Fixed in transcript.html, review.html, and coverage.html CSS class `.score.high` → `.score.filled`
+
+#### Coverage Report
+- **CRITICAL**: Segment pill links used `seg.id` (undefined) instead of `seg.segment_id` — all "Strong matches" and "Theme-level matches" links navigated to empty anchors
+- **CRITICAL**: Coverage matrix weak-cell detection compared `msg_id` against `aligned_themes` (theme IDs) — namespaces never overlap, so weak cells were never shown. Restructured guard to check segment theme intersection directly
+- Fixed 2 pre-existing test failures: `test_missing_brief_raises` and `test_missing_selections_raises` expected `FileNotFoundError` but `generate_coverage()` now renders graceful fallback HTML. Tests updated to verify the rendered "No Brief Attached" / "No Selections Found" content
+
+#### Compare Report
+- **CRITICAL**: `message_filter` logic in `compare.py` used sequential `if/continue` (AND semantics) instead of OR — groups matching on `brief_message` but not `topic` were incorrectly dropped
+
+#### Themes Report
+- **CRITICAL**: Double-escaping via `| e` filter on top of Jinja2 autoescape broke theme sidebar selection and theme pill clicks for names containing `&`, `<`, `>`, `"`. Replaced inline string interpolation with `data-*` attribute reads (`this.dataset.theme`, `this.dataset.themeName`)
+
+#### Review Report
+- `interview_id` was omitted from segment data dict — EDL export derived it via fragile `segData.id.split('_seg_')`. Added explicit `interview_id` field; JS now uses it with split as fallback
+
+#### Summary Report
+- `{{ message }}` rendered dict repr (`{'id': 'msg_001', 'text': '...'}`) instead of message text. Fixed generator to extract `.text` from key message dicts before passing to template
+
+### Test Results
+- **437 passed, 0 failed, 2 skipped** — the 2 pre-existing failures are now fixed, bringing the suite to 100% green
+
 ## [0.3.2] - 2026-03-07
 
 Client-side EDL generator audit — fixed 5 bugs to achieve parity with the Python EDL generator.

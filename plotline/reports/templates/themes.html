@@ -436,7 +436,7 @@ align-items: stretch;
             </div>
         </div>
         {% for theme in themes %}
-        <div class="theme-nav-item" id="{{ theme.id }}" data-theme="{{ theme.name }}" onclick="filterByTheme('{{ theme.name | e }}')">
+        <div class="theme-nav-item" id="{{ theme.id }}" data-theme="{{ theme.name }}" onclick="filterByTheme(this.dataset.theme)">
             <div class="theme-color-dot" style="background: {{ theme.color }}"></div>
             <div class="theme-nav-info">
                 <div class="theme-nav-name" title="{{ theme.name }}">{{ theme.name }}</div>
@@ -532,7 +532,8 @@ align-items: stretch;
                         <div class="segment-themes">
                             {% for theme_name in seg.themes %}
                             <span class="theme-pill" style="background: {{ seg.theme_colors[loop.index0] }}"
-                                onclick="event.stopPropagation(); filterByTheme('{{ theme_name | e }}')">{{ theme_name
+                                data-theme-name="{{ theme_name }}"
+                                onclick="event.stopPropagation(); filterByTheme(this.dataset.themeName)">{{ theme_name
                                 }}</span>
                             {% endfor %}
                         </div>

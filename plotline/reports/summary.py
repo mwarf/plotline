@@ -140,7 +140,10 @@ def generate_summary(
         "highlights": highlights,
         "has_brief": bool(brief_data),
         "brief_name": brief_data.get("name", "Brief"),
-        "brief_messages": brief_data.get("key_messages", [])[:5],
+        "brief_messages": [
+            m.get("text", m) if isinstance(m, dict) else m
+            for m in brief_data.get("key_messages", [])[:5]
+        ],
     }
 
     generator = ReportGenerator()

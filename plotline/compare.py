@@ -146,9 +146,10 @@ def build_comparison_groups(
                 break
 
         if message_filter:
-            if brief_message and message_filter.lower() not in brief_message.lower():
-                continue
-            if message_filter.lower() not in topic.lower():
+            matches = (
+                brief_message and message_filter.lower() in brief_message.lower()
+            ) or message_filter.lower() in topic.lower()
+            if not matches:
                 continue
 
         enriched_candidates = []

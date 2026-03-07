@@ -220,15 +220,13 @@ def analyze_coverage(
 
             if seg.get("brief_message") == msg_id:
                 cell_value = "strong"
-            elif msg_id in msg_data.get("aligned_themes", []):
+            else:
                 seg_themes = seg.get("themes", [])
                 aligned_themes = msg_data.get("aligned_themes", [])
-                if any(t in aligned_themes for t in seg_themes):
+                if aligned_themes and any(t in aligned_themes for t in seg_themes):
                     cell_value = "weak"
                 else:
                     cell_value = "none"
-            else:
-                cell_value = "none"
 
             row_cells.append(
                 {
@@ -309,12 +307,12 @@ def generate_coverage(
         output_path = project_path / "reports" / "coverage.html"
 
     generator = ReportGenerator()
-    
+
     brief_path = project_path / "brief.json"
     if not brief_path.exists():
         data = {
             "project_name": manifest.get("project_name", "Plotline Project"),
-            "missing_brief": True
+            "missing_brief": True,
         }
         result_path = generator.render("coverage.html", data, output_path, manifest=manifest)
         if open_browser:
@@ -325,7 +323,7 @@ def generate_coverage(
     if not selections_path.exists():
         data = {
             "project_name": manifest.get("project_name", "Plotline Project"),
-            "missing_selections": True
+            "missing_selections": True,
         }
         result_path = generator.render("coverage.html", data, output_path, manifest=manifest)
         if open_browser:

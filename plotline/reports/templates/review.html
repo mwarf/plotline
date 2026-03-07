@@ -206,7 +206,7 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
         <button class="btn btn-secondary delivery-filter-btn active" data-delivery="all" onclick="filterDelivery('all')">
           All
         </button>
-        <button class="btn btn-secondary delivery-filter-btn" data-delivery="high" onclick="filterDelivery('high')">
+        <button class="btn btn-secondary delivery-filter-btn" data-delivery="filled" onclick="filterDelivery('filled')">
           High
         </button>
         <button class="btn btn-secondary delivery-filter-btn" data-delivery="medium" onclick="filterDelivery('medium')">
@@ -352,7 +352,7 @@ const notes = (s.querySelector('.segment-notes')?.textContent || '').toLowerCase
 const firstBar = s.querySelector('.delivery-bar-segment');
 let deliveryClass = 'medium';
 if (firstBar) {
-    if (firstBar.classList.contains('high')) deliveryClass = 'high';
+    if (firstBar.classList.contains('filled')) deliveryClass = 'filled';
     else if (firstBar.classList.contains('low')) deliveryClass = 'low';
 }
 
@@ -673,7 +673,7 @@ function exportApproved() {
             .map(entry => {
                 const segData = reportData.segments.find(s => s.id === entry.segment_id);
                 if (!segData) return null;
-                const interviewId = segData.id.split('_seg_')[0];
+                const interviewId = segData.interview_id || segData.id.split('_seg_')[0];
                 return {
                     segment_id: entry.segment_id,
                     interview_id: interviewId,
