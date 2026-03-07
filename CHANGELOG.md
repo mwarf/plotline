@@ -2,6 +2,32 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [0.3.2] - 2026-03-07
+
+Client-side EDL generator audit — fixed 5 bugs to achieve parity with the Python EDL generator.
+
+### Fixed
+
+#### Client-Side EDL (review.html)
+
+- `secondsToDFTimecode()` used `29.97` instead of exact `30000/1001` for frame counting — caused 1-frame drift at certain timecode boundaries
+- Timecode offset parser used NDF math (`frames / fps`) for drop-frame timecodes — ported proper SMPTE `dfTimecodeToSeconds()` formula to JavaScript, matching the Python fix from v0.3.1
+- `duration_seconds` fallback used JavaScript `||` (falsy check) instead of null check — handle padding was lost when `duration_seconds` was `0` or absent
+- FPS selection took last interview's frame rate instead of most common — ported frequency-counting logic to match Python `generate_edl()`
+- No mixed-FPS warning comment in client-side EDL export — added `* WARNING: Mixed frame rates detected (...)` parity with Python
+
+### Added
+
+- `dfTimecodeToSeconds()` and `timecodeToSeconds()` JavaScript functions in review.html for accurate timecode-to-seconds conversion
+- 8 new EDL compliance tests in `TestEDLCompliance` class:
+  - CMX 3600 field width validation (event number, reel, track, timecodes)
+  - Mixed-FPS warning presence and absence
+  - Duration clamping with and without `duration_seconds`
+  - Drop-frame timecode offset round-trip accuracy
+  - Record timecode contiguity between events
+  - Most-common FPS selection for record track
+- Total tests: 435 passed (up from 427)
+
 ## [0.3.1] - 2026-03-06
 
 Multilingual support, timecode accuracy, and report UI fixes.

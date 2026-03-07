@@ -459,8 +459,7 @@ function secondsToNDFTimecode(seconds, fps) {
 }
 
 function secondsToDFTimecode(seconds) {
-    const fps = 29.97;
-    const frameCount = Math.round(seconds * fps);
+    const frameCount = Math.round(seconds * 30000 / 1001);
     const d = Math.floor(frameCount / 17982);
     const m = frameCount % 17982;
     let adjustment = 0;
@@ -486,6 +485,27 @@ function isDropFrameFPS(fps) {
     return Math.abs(fps - 29.97) < 0.01;
 }
 
+function dfTimecodeToSeconds(timecode) {
+    const parts = timecode.replace(/:/g, ';').split(';');
+    const hh = parseInt(parts[0]), mm = parseInt(parts[1]);
+    const ss = parseInt(parts[2]), ff = parseInt(parts[3]);
+    const displayFrames = hh * 108000 + mm * 1800 + ss * 30 + ff;
+    const totalMinutes = hh * 60 + mm;
+    const drops = 2 * (totalMinutes - Math.floor(totalMinutes / 10));
+    const actualFrames = displayFrames - drops;
+    return actualFrames * 1001 / 30000;
+}
+
+function timecodeToSeconds(timecode, fps) {
+    const isDF = timecode.includes(';');
+    if (isDF) return dfTimecodeToSeconds(timecode);
+    const parts = timecode.replace(/;/g, ':').split(':');
+    const hh = parseInt(parts[0]), mm = parseInt(parts[1]);
+    const ss = parseInt(parts[2]), ff = parseInt(parts[3]);
+    const totalFrames = (hh * 3600 + mm * 60 + ss) * Math.round(fps) + ff;
+    return totalFrames / fps;
+}
+
 // EDL Generator
 function makeReelName(filename, usedReels, counter) {
     var stem = filename.replace(/\.[^.]+$/, '');
@@ -508,13 +528,19 @@ function generateEDL(approvals, interviews, handleFrames, projectName) {
     
     let fps = 24;
     let dropFrame = false;
+    const fpsCounts = {};
     approvals.forEach(sel => {
         const interview = interviews[sel.interview_id];
         if (interview) {
-            fps = interview.frame_rate || 24;
-            if (isDropFrameFPS(fps)) dropFrame = true;
+            const selFps = interview.frame_rate || 24;
+            fpsCounts[selFps] = (fpsCounts[selFps] || 0) + 1;
+            if (isDropFrameFPS(selFps)) dropFrame = true;
         }
     });
+    const fpsKeys = Object.keys(fpsCounts);
+    if (fpsKeys.length > 0) {
+        fps = Number(fpsKeys.sort((a, b) => fpsCounts[b] - fpsCounts[a])[0]);
+    }
     
     const fcm = dropFrame ? "DROP FRAME" : "NON-DROP FRAME";
     lines.push(`TITLE: Plotline Selects - ${projectName}`);
@@ -546,6 +572,12 @@ function generateEDL(approvals, interviews, handleFrames, projectName) {
         lines.push("");
     }
     
+    if (fpsKeys.length > 1) {
+        const rates = fpsKeys.map(Number).sort((a, b) => a - b).join(', ');
+        lines.push(`* WARNING: Mixed frame rates detected (${rates}). Record track uses ${fps}fps.`);
+        lines.push("");
+    }
+    
     let recFrameCounter = 3600 * fps;
     
     approvals.forEach((sel, i) => {
@@ -560,15 +592,14 @@ function generateEDL(approvals, interviews, handleFrames, projectName) {
         
         const handleSec = handleFrames / interviewFps;
         let paddedStart = Math.max(0, srcStart - handleSec);
-        const interviewDuration = interview.duration_seconds || srcEnd;
-        let paddedEnd = Math.min(interviewDuration, srcEnd + handleSec);
+        let paddedEnd = srcEnd + handleSec;
+        if (interview.duration_seconds != null) {
+            paddedEnd = Math.min(interview.duration_seconds, paddedEnd);
+        }
         
         let offsetSeconds = 0;
         if (interview.start_timecode) {
-            const parts = interview.start_timecode.replace(';', ':').split(':');
-            if (parts.length === 4) {
-                offsetSeconds = (parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2])) + parseInt(parts[3]) / interviewFps;
-            }
+            offsetSeconds = timecodeToSeconds(interview.start_timecode, interviewFps);
         }
         
         const absoluteStart = offsetSeconds + paddedStart;

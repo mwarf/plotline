@@ -422,6 +422,253 @@ class TestMakeReelName:
             assert len(reel) <= 8, f"Reel '{reel}' exceeds 8 chars"
 
 
+class TestEDLCompliance:
+    """Tests for CMX 3600 spec compliance and parity with client-side JS."""
+
+    def test_cmx3600_field_widths(self):
+        """Verify event lines have correct CMX 3600 field layout."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 10.0, "end": 25.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=12)
+        event_lines = [
+            line for line in edl.split("\n") if line.strip() and line[:3].strip().isdigit()
+        ]
+        assert len(event_lines) == 3  # V, A1, A2
+
+        for line in event_lines:
+            # Event number: 3 chars, positions 0-2
+            event_num = line[0:3]
+            assert event_num.strip().isdigit(), f"Event number not numeric: '{event_num}'"
+            # Two spaces after event number
+            assert line[3:5] == "  ", f"Missing double-space after event num: '{line[3:5]}'"
+            # Reel name: 8 chars, positions 5-12
+            reel = line[5:13]
+            assert len(reel) == 8, f"Reel field not 8 chars: '{reel}'"
+            # Space then track type
+            assert line[13] == " ", f"Missing space after reel: '{line[13]}'"
+            # Track type field ends before "C" (cut transition)
+            assert "C    " in line, "Missing cut transition marker"
+            # Timecodes are present (4 of them, 11 chars each: HH:MM:SS:FF)
+            import re
+
+            timecodes = re.findall(r"\d{2}:\d{2}:\d{2}[:;]\d{2}", line)
+            assert len(timecodes) == 4, f"Expected 4 timecodes, found {len(timecodes)} in: {line}"
+
+    def test_mixed_fps_warning(self):
+        """Mixed frame rate projects include a warning comment."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 0, "end": 10.0},
+            {"segment_id": "seg-2", "interview_id": "int-002", "start": 0, "end": 10.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip24.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 60,
+            },
+            "int-002": {
+                "id": "int-002",
+                "filename": "clip30.mp4",
+                "frame_rate": 29.97,
+                "duration_seconds": 60,
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=0)
+
+        assert "WARNING: Mixed frame rates" in edl
+        assert "24" in edl
+        assert "29.97" in edl
+
+    def test_no_mixed_fps_warning_when_uniform(self):
+        """Uniform frame rate projects have no warning."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 0, "end": 10.0},
+            {"segment_id": "seg-2", "interview_id": "int-002", "start": 0, "end": 10.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 60,
+            },
+            "int-002": {
+                "id": "int-002",
+                "filename": "clip2.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 60,
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=0)
+
+        assert "WARNING" not in edl
+
+    def test_duration_clamp_with_duration_seconds(self):
+        """When duration_seconds is present, padded_end is clamped."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 55.0, "end": 60.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 60.0,  # Clip is exactly 60s
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=12)
+
+        # Handle would push end to 60.5s, but duration_seconds clamps it to 60.0
+        # Source out timecode should be based on 60s, not 60.5s
+        # With start_timecode=None, offset=0, so src_out = seconds_to_timecode(60.0, 24, False)
+        assert "00:01:00:00" in edl  # 60 seconds = 1 minute exactly
+
+    def test_duration_no_clamp_without_duration_seconds(self):
+        """When duration_seconds is absent, handle extends freely."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 55.0, "end": 60.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip.mp4",
+                "frame_rate": 24,
+                # No duration_seconds — handle padding should extend freely
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=12)
+
+        # Handle of 12 frames at 24fps = 0.5s, so end = 60.0 + 0.5 = 60.5s
+        src_out = seconds_to_timecode(60.5, 24, False)
+        assert src_out in edl
+
+    def test_df_timecode_offset_in_edl(self):
+        """EDL with DF source timecode offset produces correct source IN/OUT.
+
+        The offset 01:00:00;00 converts to ~3599.9964s (not exactly 3600s due to
+        NTSC rate). Adding 10.0s gives ~3609.9964s which maps to 01:00:10;00.
+        We verify by round-tripping through the timecode functions.
+        """
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 10.0, "end": 20.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip.mp4",
+                "frame_rate": 29.97,
+                "duration_seconds": 3600,
+                "start_timecode": "01:00:00;00",
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=0)
+
+        # Compute expected timecodes the same way the generator does
+        offset = timecode_to_seconds("01:00:00;00", 29.97)
+        expected_in = seconds_to_timecode(offset + 10.0, 29.97, True)
+        expected_out = seconds_to_timecode(offset + 20.0, 29.97, True)
+        assert expected_in in edl, f"Expected src IN {expected_in} in EDL"
+        assert expected_out in edl, f"Expected src OUT {expected_out} in EDL"
+        # Also verify the source IN is near 01:00:10 (not off by 3.6s like the old bug)
+        assert expected_in.startswith("01:00:10"), f"Source IN {expected_in} not near 01:00:10"
+
+    def test_record_timecodes_contiguous(self):
+        """Record OUT of event N equals Record IN of event N+1."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 0, "end": 10.0},
+            {"segment_id": "seg-2", "interview_id": "int-001", "start": 30.0, "end": 45.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "clip.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=0)
+
+        import re
+
+        video_lines = [
+            line
+            for line in edl.split("\n")
+            if line.strip() and line[:3].strip().isdigit() and " V " in line
+        ]
+        assert len(video_lines) == 2
+
+        # Extract timecodes from each video line
+        tc_pattern = r"(\d{2}:\d{2}:\d{2}[:;]\d{2})"
+        tcs_1 = re.findall(tc_pattern, video_lines[0])
+        tcs_2 = re.findall(tc_pattern, video_lines[1])
+        # tcs = [srcIn, srcOut, recIn, recOut]
+        rec_out_1 = tcs_1[3]
+        rec_in_2 = tcs_2[2]
+        assert rec_out_1 == rec_in_2, f"Rec OUT '{rec_out_1}' != Rec IN '{rec_in_2}'"
+
+    def test_most_common_fps_used_for_record_track(self):
+        """Record track uses the most common FPS, not last-wins."""
+        selections = [
+            {"segment_id": "seg-1", "interview_id": "int-001", "start": 0, "end": 10.0},
+            {"segment_id": "seg-2", "interview_id": "int-002", "start": 0, "end": 10.0},
+            {"segment_id": "seg-3", "interview_id": "int-003", "start": 0, "end": 10.0},
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "a.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 60,
+            },
+            "int-002": {
+                "id": "int-002",
+                "filename": "b.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 60,
+            },
+            "int-003": {
+                "id": "int-003",
+                "filename": "c.mp4",
+                "frame_rate": 29.97,
+                "duration_seconds": 60,
+            },
+        }
+
+        edl = generate_edl("Test", selections, interviews, handle_frames=0)
+
+        # Record track should start at 1 hour = 3600 * 24 frames / 24 fps = 3600s
+        # => 01:00:00:00 (NDF at 24fps)
+        # If fps were 29.97, record track would start at 01:00:00;00 (DF with semicolon)
+        video_lines = [
+            line
+            for line in edl.split("\n")
+            if line.strip() and line[:3].strip().isdigit() and " V " in line
+        ]
+        import re
+
+        tcs = re.findall(r"(\d{2}:\d{2}:\d{2}[:;]\d{2})", video_lines[0])
+        rec_in = tcs[2]  # Third timecode is record IN
+        # 24fps is most common (2 vs 1), so record timecode should be at 1h mark in NDF
+        assert rec_in == "01:00:00:00", f"Expected NDF 01:00:00:00 but got {rec_in}"
+
+
 class TestFCPXML:
     def test_seconds_to_fcpxml_time_24fps(self):
         time_str = seconds_to_fcpxml_time(1.0, 24)
