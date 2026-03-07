@@ -195,7 +195,7 @@ def generate_review(
         )
 
     total_segments = len(segments_data)
-    reviewed_count = approved_count + rejected_count + flagged_count
+    reviewed_count = approved_count + rejected_count + flagged_count + cultural_flag_count
     progress_percent = (reviewed_count / total_segments * 100) if total_segments > 0 else 0
 
     interviews_data = {

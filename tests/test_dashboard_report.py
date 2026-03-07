@@ -19,18 +19,19 @@ class TestGetStageStatus:
         stages = {
             "extracted": True,
             "transcribed": True,
+            "diarized": True,
             "analyzed": True,
             "enriched": True,
             "themes": True,
             "reviewed": True,
         }
         result = get_stage_status(stages)
-        assert len(result) == 6
+        assert len(result) == 7
         assert all(s["status"] == "completed" for s in result)
 
     def test_all_pending(self) -> None:
         result = get_stage_status({})
-        assert len(result) == 6
+        assert len(result) == 7
         assert all(s["status"] == "pending" for s in result)
 
     def test_partial_stages(self) -> None:
@@ -39,17 +40,25 @@ class TestGetStageStatus:
         completed = [s for s in result if s["status"] == "completed"]
         pending = [s for s in result if s["status"] == "pending"]
         assert len(completed) == 2
-        assert len(pending) == 4
+        assert len(pending) == 5
 
     def test_stage_order_preserved(self) -> None:
         result = get_stage_status({})
         keys = [s["key"] for s in result]
-        assert keys == ["extracted", "transcribed", "analyzed", "enriched", "themes", "reviewed"]
+        assert keys == [
+            "extracted",
+            "transcribed",
+            "diarized",
+            "analyzed",
+            "enriched",
+            "themes",
+            "reviewed",
+        ]
 
     def test_stage_initials(self) -> None:
         result = get_stage_status({})
         initials = [s["initial"] for s in result]
-        assert initials == ["Ext", "Trn", "Ana", "Enr", "Thm", "Rev"]
+        assert initials == ["Ext", "Trn", "Dia", "Ana", "Enr", "Thm", "Rev"]
 
 
 class TestCountCompletedStages:

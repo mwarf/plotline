@@ -19,6 +19,7 @@ def get_stage_status(stages: dict[str, bool]) -> list[dict[str, Any]]:
     stage_order = [
         ("extracted", "Ext", "Extraction"),
         ("transcribed", "Trn", "Transcription"),
+        ("diarized", "Dia", "Diarization"),
         ("analyzed", "Ana", "Analysis"),
         ("enriched", "Enr", "Enrichment"),
         ("themes", "Thm", "Themes"),

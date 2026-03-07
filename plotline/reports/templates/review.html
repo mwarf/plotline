@@ -9,7 +9,7 @@ all var(--transition-fast); border-left: 4px solid transparent; }
 .segment-card:hover { border-color: var(--color-border-light); }
 .segment-card.focused { border-color: var(--color-accent-primary); box-shadow: 0
 0 0 2px rgba(59, 130, 246, 0.2); } .segment-card.approved { border-left-color:
-var(--color-success); } .segment-card.rejected { opacity: 0.5; order: 999; }
+var(--color-success); } .segment-card.rejected { opacity: 0.5; }
 .segment-card.flagged { border-left-color: var(--color-warning); }
 .segment-header { display: flex; justify-content: space-between; align-items:
 flex-start; margin-bottom: 0.75rem; } .segment-role { display: inline-flex;
@@ -81,7 +81,7 @@ scale(0.98); } .drag-over { border-top: 2px solid var(--color-accent-primary); }
 <div class="review-container">
   <div class="timeline" id="timeline">
     {% for segment in segments %}
-    <div class="segment-card" id="segment-{{ segment.id }}" data-id="{{ segment.id }}" data-status="{{ segment.status }}" {% if segment.audio_path %}data-audio="{{ segment.audio_path }}"{% endif %} draggable="true"
+    <div class="segment-card" id="segment-{{ segment.id }}" data-id="{{ segment.id }}" data-status="{{ segment.status }}" {% if segment.culturally_flagged %}data-culturally-flagged="true"{% endif %} {% if segment.audio_path %}data-audio="{{ segment.audio_path }}"{% endif %} draggable="true"
       tabindex="0">
       <div class="segment-header">
         <div>
@@ -427,17 +427,18 @@ localStorage.setItem('plotline_approvals_{{ project_name }}', JSON.stringify(pay
 // Bug fix: selectors must target .summary-stat-value.text-* (the inner div),
 // not .summary-stat.text-* (the outer wrapper, which never has those classes).
 function updateSummary() {
-let approved = 0, rejected = 0, flagged = 0;
+let approved = 0, rejected = 0, flagged = 0, culturallyFlagged = 0;
 segments.forEach(s => {
 if (s.dataset.status === 'approved') approved++;
 else if (s.dataset.status === 'rejected') rejected++;
 else if (s.dataset.status === 'flagged') flagged++;
+if (s.dataset.culturallyFlagged === 'true') culturallyFlagged++;
 });
 document.querySelector('.summary-stat-value.text-success').textContent = approved;
 document.querySelector('.summary-stat-value.text-error').textContent = rejected;
 document.querySelector('.summary-stat-value.text-warning').textContent = flagged;
 const total = segments.length;
-const reviewed = approved + rejected + flagged;
+const reviewed = approved + rejected + flagged + culturallyFlagged;
 const pct = total > 0 ? (reviewed / total * 100) : 0;
 const fill = document.querySelector('.progress-bar-fill');
 if (fill) fill.style.width = pct.toFixed(1) + '%';
