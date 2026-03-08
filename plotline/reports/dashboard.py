@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from plotline.project import read_json
+from plotline.io import read_json
 from plotline.reports.generator import ReportGenerator
 from plotline.utils import format_duration_friendly as format_duration
 

@@ -90,7 +90,7 @@ def generate_compare_report(
     key_messages = []
     brief_path = project_path / "brief.json"
     if brief_path.exists():
-        from plotline.project import read_json
+        from plotline.io import read_json
 
         brief = read_json(brief_path)
         key_messages = brief.get("key_messages", [])

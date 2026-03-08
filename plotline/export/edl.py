@@ -211,7 +211,7 @@ def generate_edl_from_project(
     Returns:
         EDL content as string
     """
-    from plotline.project import read_json
+    from plotline.io import read_json
 
     data_dir = project_path / "data"
     selections_path = data_dir / "selections.json"

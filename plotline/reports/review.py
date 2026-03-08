@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from plotline.export.timecode import seconds_to_timecode
-from plotline.project import read_json
+from plotline.io import read_json
 from plotline.reports.generator import ReportGenerator
 from plotline.utils import format_duration, get_delivery_class
 
