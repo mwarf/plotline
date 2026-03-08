@@ -140,10 +140,10 @@ The master record of all interviews and their processing state.
       "stages": {
         "extracted": true,
         "transcribed": true,
+        "diarized": false,
         "analyzed": false,
         "enriched": false,
-        "themes": false,
-        "reviewed": false
+        "themes": false
       }
     }
   ]

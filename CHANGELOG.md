@@ -2,6 +2,49 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [0.3.4] - 2026-03-08
+
+CLI audit — fixed 17 bugs identified in comprehensive cli.py review.
+
+### Fixed
+
+#### Pipeline Stage Logic
+
+- **_suggest_next_stage**: Replaced buggy `f"{stage}ed"` string concatenation (produced "analyzeed") with explicit stage key mapping dictionary
+- **_suggest_next_stage**: Fixed incorrect checks for project-level stages (synthesize, arc) — these don't have per-interview stage keys
+- **_has_completed_llm_stages**: Removed check for non-existent `synthesized` key in interview stages
+- **run_pipeline**: Added `diarize` to valid `--from` stages list (was missing, preventing resume from diarize)
+- **interview stages**: Removed `reviewed` from default stages dict — it was never set to True, inflating progress percentages
+
+#### Speaker Management
+
+- **manage_speakers color generation**: Fixed near-black invisible colors (`f"#{idx % 10:06X}"` → `#000000`-`#000009`) by using `DEFAULT_COLORS` palette
+- **manage_speakers variable shadowing**: Renamed loop variable `speaker_id` to `spk_id` to avoid shadowing function parameter
+- **format_duration import shadowing**: Renamed to `format_speaker_duration` to avoid shadowing top-level utils function
+- **Removed unused import**: `SpeakerConfig` was imported but never used
+
+#### Brief Staleness Detection
+
+- **_check_brief_staleness**: Fixed timezone mismatch — `datetime.fromtimestamp()` produces naive datetime but `fromisoformat()` may produce aware datetime
+- **_check_brief_staleness**: Added `TypeError` catch in addition to `ValueError` for robustness
+
+#### Approvals System
+
+- **approve/reject/unapprove commands**: Added segment_id validation — commands now error if segment doesn't exist in selections
+- **show_approvals**: Added KeyError protection for `s["segment_id"]` access in approval_map construction
+
+#### Code Quality
+
+- **extract_themes**: Removed unused `interview` and `all_interviews` parameters
+- **run_pipeline**: Removed unused `excluded` variable after diarization
+- **_build_status_json**: Now copies stages dict to avoid reference issues when modifying
+- **diagnose_project**: Fixed `Path('')` truthy check — empty path string now properly checks if source_file exists
+- **DRY violation**: Extracted `_generate_all_reports()` helper to eliminate duplicated report generation code in `report all` and `run_pipeline`
+
+### Test Results
+
+- **439 passed, 0 failed, 2 skipped** — all existing tests continue to pass
+
 ## [0.3.3] - 2026-03-07
 
 Report audit — fixed 8 critical/high-impact bugs across all 7 report stages.
