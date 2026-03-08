@@ -93,6 +93,7 @@ def extract_audio(
             text=True,
         )
         if proc.returncode != 0:
+            output_16k.unlink(missing_ok=True)
             raise ExtractionError(f"FFmpeg full-rate extraction failed: {proc.stderr}")
 
         result["success"] = True
@@ -105,6 +106,8 @@ def extract_audio(
     except ExtractionError:
         raise
     except Exception as e:
+        output_16k.unlink(missing_ok=True)
+        output_full.unlink(missing_ok=True)
         raise ExtractionError(f"Audio extraction failed: {e}") from e
 
     return result

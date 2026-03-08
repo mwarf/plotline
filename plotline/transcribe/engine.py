@@ -164,7 +164,7 @@ def _parse_whisper_result(
 
         confidence = seg.get("avg_logprob", seg.get("confidence", 0))
         if confidence < 0:
-            confidence = (confidence + 1) / 1
+            confidence = max(0.0, min(1.0, 1 + confidence))
 
         segment_data = {
             "segment_id": f"seg_{i + 1:03d}",
@@ -210,7 +210,7 @@ def transcribe_all_interviews(
     """
     from rich.table import Table
 
-    from plotline.project import write_json
+    from plotline.io import write_json
 
     data_dir = project_path / "data"
     transcripts_dir = data_dir / "transcripts"
@@ -269,8 +269,8 @@ def transcribe_all_interviews(
             transcript["interview_id"] = interview_id
             transcript["duration_seconds"] = interview.get("duration_seconds", 0)
 
-            for seg in transcript["segments"]:
-                seg["segment_id"] = f"{interview_id}_seg_{seg['segment_id'].split('_')[1]}"
+            for i, seg in enumerate(transcript["segments"]):
+                seg["segment_id"] = f"{interview_id}_seg_{i + 1:03d}"
 
             output_path = transcripts_dir / f"{interview_id}.json"
             write_json(output_path, transcript)
@@ -300,6 +300,7 @@ def transcribe_all_interviews(
                     "error": str(e),
                 }
             )
+            continue
 
     if console:
         console.print(table)
