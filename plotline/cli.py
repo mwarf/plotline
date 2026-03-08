@@ -624,6 +624,15 @@ def extract_themes(
         console.print("[yellow]No interviews found. Run 'plotline add' first.[/yellow]")
         raise typer.Exit(0)
 
+    brief_path = project_dir / "brief.json"
+    if not brief_path.exists():
+        console.print("[yellow]Warning: No brief attached. Using generic prompts.[/yellow]")
+        console.print("[dim]Attach a brief with: plotline brief <file>[/dim]\n")
+
+    staleness_warnings = _check_brief_staleness(project_dir)
+    for warning in staleness_warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+
     from plotline.config import load_config
     from plotline.llm.client import create_client_from_config
     from plotline.llm.templates import PromptTemplateManager, detect_project_language
@@ -678,6 +687,15 @@ def synthesize_themes_cmd(
     project = Project(project_dir)
     manifest = project.load_manifest()
 
+    brief_path = project_dir / "brief.json"
+    if not brief_path.exists():
+        console.print("[yellow]Warning: No brief attached. Using generic prompts.[/yellow]")
+        console.print("[dim]Attach a brief with: plotline brief <file>[/dim]\n")
+
+    staleness_warnings = _check_brief_staleness(project_dir)
+    for warning in staleness_warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+
     from plotline.config import load_config
     from plotline.llm.client import create_client_from_config
     from plotline.llm.synthesis import run_synthesis
@@ -719,6 +737,15 @@ def build_arc_cmd(
 
     project = Project(project_dir)
     manifest = project.load_manifest()
+
+    brief_path = project_dir / "brief.json"
+    if not brief_path.exists():
+        console.print("[yellow]Warning: No brief attached. Using generic prompts.[/yellow]")
+        console.print("[dim]Attach a brief with: plotline brief <file>[/dim]\n")
+
+    staleness_warnings = _check_brief_staleness(project_dir)
+    for warning in staleness_warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
 
     from plotline.config import load_config
     from plotline.llm.arc import run_arc_construction
@@ -831,12 +858,383 @@ def export_timeline(
     console.print(f"[dim]  Format: {format.upper()}, Handle: {handle} frames[/dim]")
 
 
+# Phase 6.5: Approvals
+
+
+def _load_approvals(project_dir: Path) -> dict:
+    """Load or create approvals data."""
+    from plotline.project import read_json
+
+    approvals_path = project_dir / "approvals.json"
+    if approvals_path.exists():
+        return read_json(approvals_path)
+    return {"segments": []}
+
+
+def _save_approvals(project_dir: Path, approvals: dict) -> None:
+    """Save approvals data."""
+    from datetime import datetime
+
+    from plotline.project import write_json
+
+    approvals_path = project_dir / "approvals.json"
+    approvals["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    write_json(approvals_path, approvals)
+
+
+def _update_approval_status(approvals: dict, segment_id: str, status: str) -> bool:
+    """Update segment approval status. Returns True if changed."""
+    approval_map = {s["segment_id"]: s for s in approvals.get("segments", [])}
+
+    if segment_id in approval_map:
+        if approval_map[segment_id].get("status") == status:
+            return False
+        approval_map[segment_id]["status"] = status
+    else:
+        approval_map[segment_id] = {"segment_id": segment_id, "status": status}
+
+    approvals["segments"] = list(approval_map.values())
+    return True
+
+
+@app.command("approve")
+def approve_segment(
+    segment_id: str | None = typer.Argument(None, help="Segment ID to approve"),
+    interview: str | None = typer.Option(
+        None, "--interview", "-i", help="Approve all from interview"
+    ),
+    all_segments: bool = typer.Option(False, "--all", "-a", help="Approve all pending segments"),
+    threshold: float | None = typer.Option(
+        None, "--threshold", "-t", help="Auto-approve segments with score >= threshold"
+    ),
+) -> None:
+    """Approve segments for export."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    from plotline.project import read_json
+
+    selections_path = project_dir / "data" / "selections.json"
+    if not selections_path.exists():
+        console.print("[red]Error: No selections found. Run 'plotline arc' first.[/red]")
+        raise typer.Exit(1)
+
+    selections = read_json(selections_path)
+    approvals = _load_approvals(project_dir)
+
+    approved_count = 0
+
+    if segment_id:
+        if _update_approval_status(approvals, segment_id, "approved"):
+            approved_count = 1
+            console.print(f"[green]✓[/green] Approved: {segment_id}")
+
+    elif interview:
+        for seg in selections.get("segments", []):
+            if seg.get("interview_id") == interview:
+                if _update_approval_status(approvals, seg["segment_id"], "approved"):
+                    approved_count += 1
+        console.print(f"[green]✓[/green] Approved {approved_count} segment(s) from {interview}")
+
+    elif all_segments and threshold is not None:
+        for seg in selections.get("segments", []):
+            score = seg.get("composite_score", 0)
+            if score >= threshold:
+                if _update_approval_status(approvals, seg["segment_id"], "approved"):
+                    approved_count += 1
+        console.print(
+            f"[green]✓[/green] Approved {approved_count} segment(s) with score >= {threshold}"
+        )
+
+    elif all_segments:
+        for seg in selections.get("segments", []):
+            if _update_approval_status(approvals, seg["segment_id"], "approved"):
+                approved_count += 1
+        console.print(f"[green]✓[/green] Approved {approved_count} segment(s)")
+
+    else:
+        console.print(
+            "[red]Error: Specify segment_id, --interview, --all, or --all --threshold[/red]"
+        )
+        console.print("[dim]Examples:[/dim]")
+        console.print("[dim]  plotline approve interview_001_seg_001[/dim]")
+        console.print("[dim]  plotline approve --interview interview_001[/dim]")
+        console.print("[dim]  plotline approve --all[/dim]")
+        console.print("[dim]  plotline approve --all --threshold 0.8[/dim]")
+        raise typer.Exit(1)
+
+    _save_approvals(project_dir, approvals)
+
+
+@app.command("reject")
+def reject_segment(
+    segment_id: str | None = typer.Argument(None, help="Segment ID to reject"),
+    interview: str | None = typer.Option(
+        None, "--interview", "-i", help="Reject all from interview"
+    ),
+    all_segments: bool = typer.Option(False, "--all", "-a", help="Reject all pending segments"),
+) -> None:
+    """Reject segments from export."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    from plotline.project import read_json
+
+    selections_path = project_dir / "data" / "selections.json"
+    if not selections_path.exists():
+        console.print("[red]Error: No selections found. Run 'plotline arc' first.[/red]")
+        raise typer.Exit(1)
+
+    selections = read_json(selections_path)
+    approvals = _load_approvals(project_dir)
+
+    rejected_count = 0
+
+    if segment_id:
+        if _update_approval_status(approvals, segment_id, "rejected"):
+            rejected_count = 1
+            console.print(f"[red]✗[/red] Rejected: {segment_id}")
+
+    elif interview:
+        for seg in selections.get("segments", []):
+            if seg.get("interview_id") == interview:
+                if _update_approval_status(approvals, seg["segment_id"], "rejected"):
+                    rejected_count += 1
+        console.print(f"[red]✗[/red] Rejected {rejected_count} segment(s) from {interview}")
+
+    elif all_segments:
+        for seg in selections.get("segments", []):
+            if _update_approval_status(approvals, seg["segment_id"], "rejected"):
+                rejected_count += 1
+        console.print(f"[red]✗[/red] Rejected {rejected_count} segment(s)")
+
+    else:
+        console.print("[red]Error: Specify segment_id, --interview, or --all[/red]")
+        raise typer.Exit(1)
+
+    _save_approvals(project_dir, approvals)
+
+
+@app.command("unapprove")
+def unapprove_segment(
+    segment_id: str | None = typer.Argument(None, help="Segment ID to reset"),
+    interview: str | None = typer.Option(
+        None, "--interview", "-i", help="Reset all from interview"
+    ),
+    all_segments: bool = typer.Option(False, "--all", "-a", help="Reset all segments"),
+) -> None:
+    """Reset segment approval status to pending."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    from plotline.project import read_json
+
+    selections_path = project_dir / "data" / "selections.json"
+    if not selections_path.exists():
+        console.print("[red]Error: No selections found. Run 'plotline arc' first.[/red]")
+        raise typer.Exit(1)
+
+    selections = read_json(selections_path)
+    approvals = _load_approvals(project_dir)
+
+    reset_count = 0
+
+    if segment_id:
+        if _update_approval_status(approvals, segment_id, "pending"):
+            reset_count = 1
+            console.print(f"[dim]○[/dim] Reset: {segment_id}")
+
+    elif interview:
+        for seg in selections.get("segments", []):
+            if seg.get("interview_id") == interview:
+                if _update_approval_status(approvals, seg["segment_id"], "pending"):
+                    reset_count += 1
+        console.print(f"[dim]○[/dim] Reset {reset_count} segment(s) from {interview}")
+
+    elif all_segments:
+        for seg in selections.get("segments", []):
+            if _update_approval_status(approvals, seg["segment_id"], "pending"):
+                reset_count += 1
+        console.print(f"[dim]○[/dim] Reset {reset_count} segment(s)")
+
+    else:
+        console.print("[red]Error: Specify segment_id, --interview, or --all[/red]")
+        raise typer.Exit(1)
+
+    _save_approvals(project_dir, approvals)
+
+
+@app.command("approvals")
+def show_approvals() -> None:
+    """Show approval summary."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    from plotline.project import read_json
+
+    selections_path = project_dir / "data" / "selections.json"
+    if not selections_path.exists():
+        console.print("[red]Error: No selections found. Run 'plotline arc' first.[/red]")
+        raise typer.Exit(1)
+
+    selections = read_json(selections_path)
+    approvals = _load_approvals(project_dir)
+
+    approval_map = {
+        s["segment_id"]: s.get("status", "pending") for s in approvals.get("segments", [])
+    }
+
+    total = len(selections.get("segments", []))
+    approved = sum(
+        1 for s in selections.get("segments", []) if approval_map.get(s["segment_id"]) == "approved"
+    )
+    rejected = sum(
+        1 for s in selections.get("segments", []) if approval_map.get(s["segment_id"]) == "rejected"
+    )
+    pending = total - approved - rejected
+
+    console.print(f"\n[bold]Approval Summary[/bold]")
+    console.print(f"  Total segments: {total}")
+    console.print(f"  [green]Approved: {approved}[/green]")
+    console.print(f"  [red]Rejected: {rejected}[/red]")
+    console.print(f"  [dim]Pending: {pending}[/dim]")
+
+    if total > 0:
+        progress = int((approved + rejected) / total * 100)
+        console.print(f"\n  Progress: {progress}%")
+
+    if approved > 0:
+        console.print(f"\n[dim]Export with: plotline export[/dim]")
+
+
 # Phase 7: Reports
+
+
+def _build_status_json(manifest: dict, project_dir: Path) -> dict:
+    """Build status data as JSON for scripting."""
+    from plotline.config import load_config
+
+    interviews = manifest.get("interviews", [])
+    interviews_data = []
+
+    for interview in interviews:
+        stages = interview.get("stages", {})
+        completed = sum(1 for v in stages.values() if v)
+        total = len(stages)
+        interviews_data.append(
+            {
+                "id": interview.get("id"),
+                "duration_seconds": interview.get("duration_seconds", 0),
+                "stages": stages,
+                "completed_stages": completed,
+                "total_stages": total,
+                "progress_percent": int(completed / total * 100) if total > 0 else 0,
+            }
+        )
+
+    total_stages = sum(i["completed_stages"] for i in interviews_data)
+    max_stages = sum(i["total_stages"] for i in interviews_data)
+    overall_pct = int(total_stages / max_stages * 100) if max_stages > 0 else 0
+
+    config = load_config(project_dir)
+
+    return {
+        "project_name": manifest.get("project_name", "Unknown"),
+        "profile": config.project_profile,
+        "interviews": interviews_data,
+        "total_stages_completed": total_stages,
+        "total_stages_possible": max_stages,
+        "overall_progress_percent": overall_pct,
+    }
+
+
+def _suggest_next_stage(manifest: dict) -> str:
+    """Suggest the next pipeline stage to run."""
+    stage_order = ["extract", "transcribe", "analyze", "enrich", "themes", "synthesize", "arc"]
+
+    for stage in stage_order:
+        stage_key = (
+            f"{stage}ed" if stage in ("extract", "transcribe", "analyze", "enrich") else stage
+        )
+        if stage == "transcribe":
+            stage_key = "transcribed"
+
+        all_done = all(
+            i.get("stages", {}).get(stage_key, False) for i in manifest.get("interviews", [])
+        )
+        if not all_done:
+            return stage
+
+    return "review"
+
+
+def _has_completed_llm_stages(manifest: dict) -> bool:
+    """Check if any LLM stages have been completed."""
+    for interview in manifest.get("interviews", []):
+        stages = interview.get("stages", {})
+        if stages.get("themes") or stages.get("synthesized"):
+            return True
+    return False
+
+
+def _check_brief_staleness(project_dir: Path) -> list[str]:
+    """Check if brief was modified after LLM stages ran. Returns warning messages."""
+    from datetime import datetime
+
+    warnings = []
+    brief_path = project_dir / "brief.json"
+
+    if not brief_path.exists():
+        return []
+
+    brief_mtime = brief_path.stat().st_mtime
+    brief_time = datetime.fromtimestamp(brief_mtime)
+
+    synthesis_path = project_dir / "data" / "synthesis.json"
+    if synthesis_path.exists():
+        from plotline.project import read_json
+
+        synthesis = read_json(synthesis_path)
+        synth_time_str = synthesis.get("synthesized_at")
+        if synth_time_str:
+            try:
+                synth_time = datetime.fromisoformat(synth_time_str)
+                if brief_time > synth_time:
+                    warnings.append(
+                        "Brief modified after synthesis. Re-run: plotline run --from themes"
+                    )
+            except ValueError:
+                pass
+
+    arc_path = project_dir / "data" / "arc.json"
+    if arc_path.exists():
+        from plotline.project import read_json
+
+        arc = read_json(arc_path)
+        arc_time_str = arc.get("built_at")
+        if arc_time_str:
+            try:
+                arc_time = datetime.fromisoformat(arc_time_str)
+                if brief_time > arc_time:
+                    warnings.append("Brief modified after arc. Re-run: plotline run --from arc")
+            except ValueError:
+                pass
+
+    return warnings
 
 
 @app.command("status")
 def show_status(
-    open_browser: bool = typer.Option(False, "--open", "-o", help="Open in browser"),
+    open_browser: bool = typer.Option(False, "--open", "-o", help="Open dashboard in browser"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ) -> None:
     """Show project status and pipeline progress."""
     project_dir = find_project_dir()
@@ -844,28 +1242,146 @@ def show_status(
         console.print("[red]Error: Not in a Plotline project directory[/red]")
         raise typer.Exit(1)
 
-    from plotline.reports.dashboard import generate_dashboard
-
     project = Project(project_dir)
     manifest = project.load_manifest()
 
-    output_path = project_dir / "reports" / "dashboard.html"
+    if json_output:
+        import json
 
-    try:
+        status_data = _build_status_json(manifest, project_dir)
+        console.print_json(json.dumps(status_data, indent=2))
+        return
+
+    from plotline.config import load_config
+
+    config = load_config(project_dir)
+
+    console.print(f"\n[bold cyan]Project: {manifest.get('project_name', 'Unknown')}[/bold cyan]")
+    console.print(f"[dim]Profile: {config.project_profile}[/dim]\n")
+
+    interviews = manifest.get("interviews", [])
+    if not interviews:
+        console.print("[yellow]No interviews found. Run 'plotline add' first.[/yellow]")
+        return
+
+    table = Table(title="Interviews")
+    table.add_column("ID", style="cyan")
+    table.add_column("Duration", style="green")
+    table.add_column("Progress", style="yellow")
+    table.add_column("Stages", style="dim")
+
+    for interview in interviews:
+        stages = interview.get("stages", {})
+        completed = sum(1 for v in stages.values() if v)
+        total = len(stages)
+        pct = int(completed / total * 100) if total > 0 else 0
+
+        bar_filled = pct // 10
+        bar = "█" * bar_filled + "░" * (10 - bar_filled)
+
+        completed_stages = [k for k, v in stages.items() if v]
+        stage_str = ", ".join(completed_stages) if completed_stages else "-"
+        if len(stage_str) > 35:
+            stage_str = stage_str[:32] + "..."
+
+        table.add_row(
+            interview.get("id", "unknown"),
+            format_duration(interview.get("duration_seconds", 0)),
+            f"{bar} {pct}%",
+            stage_str,
+        )
+
+    console.print(table)
+
+    total_stages = sum(sum(1 for v in i.get("stages", {}).values() if v) for i in interviews)
+    max_stages = sum(len(i.get("stages", {})) for i in interviews)
+    overall_pct = int(total_stages / max_stages * 100) if max_stages > 0 else 0
+
+    console.print(
+        f"\n[bold]Overall Progress: {overall_pct}%[/bold] ({total_stages}/{max_stages} stages)"
+    )
+
+    if overall_pct < 100:
+        next_stage = _suggest_next_stage(manifest)
+        console.print(f"\n[dim]Next: plotline {next_stage}[/dim]")
+    else:
+        console.print(f"\n[dim]Ready: plotline review && plotline export[/dim]")
+
+    if open_browser:
+        from plotline.reports.dashboard import generate_dashboard
+
+        output_path = project_dir / "reports" / "dashboard.html"
         generate_dashboard(
             project_path=project_dir,
             manifest=manifest,
             output_path=output_path,
-            open_browser=open_browser,
+            open_browser=True,
         )
-        console.print(f"[green]✓[/green] Dashboard generated: {output_path}")
-        if open_browser:
-            console.print("[dim]Opening in browser...[/dim]")
-        else:
-            console.print("[dim]Run with --open to view in browser[/dim]")
-    except Exception as e:
-        console.print(f"[red]Error generating dashboard: {e}[/red]")
+    else:
+        console.print("[dim]Run with --open to view dashboard in browser[/dim]")
+
+
+@app.command("info")
+def show_info() -> None:
+    """Display project configuration and metadata."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
         raise typer.Exit(1)
+
+    from plotline.config import load_config
+    from plotline.project import read_json
+
+    project = Project(project_dir)
+    manifest = project.load_manifest()
+    config = load_config(project_dir)
+
+    console.print(f"\n[bold cyan]Project: {config.project_name}[/bold cyan]")
+    console.print(f"  Profile: {config.project_profile}")
+    console.print(f"  Created: {manifest.get('created', 'Unknown')}")
+
+    interviews = manifest.get("interviews", [])
+    total_duration = sum(i.get("duration_seconds", 0) for i in interviews)
+    console.print(f"\n[bold]Interviews: {len(interviews)}[/bold]")
+    console.print(f"  Total duration: {format_duration(total_duration)}")
+
+    languages = set(i.get("detected_language") for i in interviews if i.get("detected_language"))
+    if languages:
+        console.print(f"  Languages: {', '.join(sorted(languages))}")
+
+    brief_path = project_dir / "brief.json"
+    if brief_path.exists():
+        brief = read_json(brief_path)
+        console.print(f"\n[bold]Brief: Attached[/bold]")
+        console.print(f"  Key messages: {len(brief.get('key_messages', []))}")
+        target = brief.get("target_duration")
+        if target:
+            console.print(f"  Target duration: {target}")
+    else:
+        console.print(f"\n[bold]Brief: Not attached[/bold]")
+
+    selections_path = project_dir / "data" / "selections.json"
+    if selections_path.exists():
+        selections = read_json(selections_path)
+        seg_count = len(selections.get("segments", []))
+        est_duration = selections.get("estimated_duration_seconds", 0)
+        console.print(f"\n[bold]Selections: {seg_count} segments[/bold]")
+        console.print(f"  Estimated duration: {format_duration(est_duration)}")
+
+        approvals_path = project_dir / "approvals.json"
+        if approvals_path.exists():
+            approvals = read_json(approvals_path)
+            approved = sum(
+                1 for s in approvals.get("segments", []) if s.get("status") == "approved"
+            )
+            console.print(f"  Approved: {approved}/{seg_count}")
+
+    console.print(f"\n[bold]Configuration:[/bold]")
+    console.print(f"  LLM: {config.llm_backend} ({config.llm_model})")
+    console.print(f"  Whisper: {config.whisper_backend} ({config.whisper_model})")
+    console.print(f"  Target duration: {config.target_duration_seconds}s")
+    console.print(f"  Diarization: {'Enabled' if config.diarization_enabled else 'Disabled'}")
+    console.print(f"  Cultural flags: {'Enabled' if config.cultural_flags else 'Disabled'}")
 
 
 @app.command("report")
@@ -1072,6 +1588,8 @@ def attach_brief(
         console.print("[red]Error: Not in a Plotline project directory[/red]")
         raise typer.Exit(1)
 
+    from datetime import datetime
+
     from plotline.brief import parse_brief, save_brief
 
     brief_path = Path(brief_file).expanduser().resolve()
@@ -1081,9 +1599,22 @@ def attach_brief(
         output_path = project_dir / "brief.json"
         save_brief(brief, output_path)
 
+        project = Project(project_dir)
+        manifest = project.load_manifest()
+        manifest["brief"] = {
+            "attached_at": datetime.now().isoformat(timespec="seconds"),
+            "source_file": str(brief_path),
+            "key_messages_count": len(brief.get("key_messages", [])),
+        }
+        project.save_manifest(manifest)
+
         console.print(f"[green]✓[/green] Brief parsed and saved to {output_path}")
         console.print(f"[dim]  Source: {brief_path}[/dim]")
         console.print(f"[dim]  Key messages: {len(brief.get('key_messages', []))}[/dim]")
+
+        if _has_completed_llm_stages(manifest):
+            console.print("\n[yellow]Warning: Brief attached after LLM analysis.[/yellow]")
+            console.print("[dim]Re-run with: plotline run --from themes[/dim]")
 
         if show:
             import json
@@ -1461,6 +1992,172 @@ def validate_data(
             console.print("\n[green]✓ All validations passed[/green]")
         else:
             console.print("\n[yellow]⚠ Some validations failed[/yellow]")
+
+
+@app.command("diagnose")
+def diagnose_project(
+    fix: bool = typer.Option(False, "--fix", help="Attempt to fix issues (not implemented)"),
+) -> None:
+    """Diagnose pipeline issues and suggest fixes."""
+    project_dir = find_project_dir()
+    if not project_dir:
+        console.print("[red]Error: Not in a Plotline project directory[/red]")
+        raise typer.Exit(1)
+
+    import json
+
+    issues = []
+
+    project = Project(project_dir)
+    manifest = project.load_manifest()
+
+    for interview in manifest.get("interviews", []):
+        source = Path(interview.get("source_file", ""))
+        if source and not source.exists():
+            issues.append(
+                {
+                    "type": "missing_source",
+                    "interview": interview.get("id", "unknown"),
+                    "message": f"Source file not found: {source}",
+                    "fix": None,
+                }
+            )
+
+    for interview in manifest.get("interviews", []):
+        stages = interview.get("stages", {})
+        interview_id = interview.get("id", "unknown")
+
+        if stages.get("extracted"):
+            audio_path = interview.get("audio_16k_path")
+            if audio_path:
+                full_path = project_dir / audio_path
+                if not full_path.exists():
+                    issues.append(
+                        {
+                            "type": "missing_audio",
+                            "interview": interview_id,
+                            "message": "Audio marked as extracted but file missing",
+                            "fix": "plotline extract --force",
+                        }
+                    )
+
+        if stages.get("transcribed"):
+            transcript_path = project_dir / "data" / "transcripts" / f"{interview_id}.json"
+            if not transcript_path.exists():
+                issues.append(
+                    {
+                        "type": "missing_transcript",
+                        "interview": interview_id,
+                        "message": "Transcript marked as done but file missing",
+                        "fix": "plotline transcribe --force",
+                    }
+                )
+
+    data_dir = project_dir / "data"
+    if data_dir.exists():
+        for json_file in data_dir.rglob("*.json"):
+            try:
+                with open(json_file) as f:
+                    json.load(f)
+            except json.JSONDecodeError as e:
+                issues.append(
+                    {
+                        "type": "corrupted_json",
+                        "file": str(json_file.relative_to(project_dir)),
+                        "message": f"Invalid JSON: {e}",
+                        "fix": f"plotline run --from {infer_stage_from_path(json_file)}",
+                    }
+                )
+            except Exception as e:
+                issues.append(
+                    {
+                        "type": "read_error",
+                        "file": str(json_file.relative_to(project_dir)),
+                        "message": f"Cannot read file: {e}",
+                        "fix": None,
+                    }
+                )
+
+    themes_dir = project_dir / "data" / "themes"
+    if themes_dir.exists():
+        for theme_file in themes_dir.glob("*.json"):
+            try:
+                with open(theme_file) as f:
+                    data = json.load(f)
+                if not data.get("themes"):
+                    issues.append(
+                        {
+                            "type": "incomplete_llm",
+                            "file": str(theme_file.relative_to(project_dir)),
+                            "message": "Theme extraction returned empty themes",
+                            "fix": "plotline themes --force",
+                        }
+                    )
+            except Exception:
+                pass
+
+    synthesis_path = project_dir / "data" / "synthesis.json"
+    if synthesis_path.exists():
+        try:
+            with open(synthesis_path) as f:
+                data = json.load(f)
+            if not data.get("unified_themes") and not data.get("best_takes"):
+                issues.append(
+                    {
+                        "type": "incomplete_llm",
+                        "file": "data/synthesis.json",
+                        "message": "Synthesis returned no themes or best takes",
+                        "fix": "plotline synthesize --force",
+                    }
+                )
+        except Exception:
+            pass
+
+    if not issues:
+        console.print("[green]✓ No issues found[/green]")
+        return
+
+    table = Table(title=f"Found {len(issues)} Issue(s)")
+    table.add_column("Type", style="cyan")
+    table.add_column("Location", style="yellow")
+    table.add_column("Message", style="red")
+    table.add_column("Suggested Fix", style="green")
+
+    for issue in issues:
+        table.add_row(
+            issue.get("type", "unknown"),
+            issue.get("interview") or issue.get("file", "-"),
+            issue.get("message", ""),
+            issue.get("fix") or "Manual fix required",
+        )
+
+    console.print(table)
+
+    if fix:
+        console.print(
+            "\n[yellow]Auto-fix not implemented. Run suggested commands manually.[/yellow]"
+        )
+
+    raise typer.Exit(1)
+
+
+def infer_stage_from_path(file_path: Path) -> str:
+    """Infer pipeline stage from file path."""
+    path_str = str(file_path).lower()
+    if "transcript" in path_str:
+        return "transcribe"
+    elif "delivery" in path_str:
+        return "analyze"
+    elif "segments" in path_str:
+        return "enrich"
+    elif "themes" in path_str:
+        return "themes"
+    elif "synthesis" in path_str:
+        return "synthesize"
+    elif "arc" in path_str or "selections" in path_str:
+        return "arc"
+    else:
+        return "extract"
 
 
 if __name__ == "__main__":

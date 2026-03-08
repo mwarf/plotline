@@ -62,11 +62,16 @@ def synthesize_themes(
     data = parse_llm_json(response)
     validated = validate_synthesis_response(data)
 
-    return {
+    result = {
         "synthesized_at": datetime.now().isoformat(timespec="seconds"),
         "llm_model": client.model,
         **validated,
     }
+
+    if brief:
+        result["brief_modified_at"] = brief.get("modified_at")
+
+    return result
 
 
 def run_synthesis(
@@ -104,6 +109,9 @@ def run_synthesis(
     brief_path = project_path / "brief.json"
     if brief_path.exists():
         brief = read_json(brief_path)
+        brief["modified_at"] = datetime.fromtimestamp(brief_path.stat().st_mtime).isoformat(
+            timespec="seconds"
+        )
 
     all_have_themes = all(
         interview["stages"].get("themes") for interview in manifest.get("interviews", [])

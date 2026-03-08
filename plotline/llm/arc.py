@@ -79,11 +79,16 @@ def build_narrative_arc(
     data = parse_llm_json(response)
     validated = validate_arc_response(data, target_duration)
 
-    return {
+    result = {
         "built_at": datetime.now().isoformat(timespec="seconds"),
         "llm_model": client.model,
         **validated,
     }
+
+    if brief:
+        result["brief_modified_at"] = brief.get("modified_at")
+
+    return result
 
 
 def create_selections_from_arc(
@@ -182,6 +187,9 @@ def run_arc_construction(
     brief_path = project_path / "brief.json"
     if brief_path.exists():
         brief = read_json(brief_path)
+        brief["modified_at"] = datetime.fromtimestamp(brief_path.stat().st_mtime).isoformat(
+            timespec="seconds"
+        )
 
     if not synthesis_path.exists():
         if console:
