@@ -238,28 +238,66 @@ class TestSpeakerInfo:
     def test_to_dict(self) -> None:
         info = SpeakerInfo(name="Alice", color="#3B82F6")
         result = info.to_dict()
-        assert result == {"name": "Alice", "color": "#3B82F6"}
+        assert result == {
+            "name": "Alice",
+            "color": "#3B82F6",
+            "role": "unknown",
+            "include_in_edl": True,
+        }
+
+    def test_to_dict_with_role(self) -> None:
+        info = SpeakerInfo(name="Bob", color="#10B981", role="interviewer", include_in_edl=False)
+        result = info.to_dict()
+        assert result == {
+            "name": "Bob",
+            "color": "#10B981",
+            "role": "interviewer",
+            "include_in_edl": False,
+        }
 
     def test_from_dict(self) -> None:
         data = {"name": "Bob", "color": "#10B981"}
         result = SpeakerInfo.from_dict(data)
         assert result.name == "Bob"
         assert result.color == "#10B981"
+        assert result.role == "unknown"
+        assert result.include_in_edl is True
+
+    def test_from_dict_with_role(self) -> None:
+        data = {"name": "Carol", "color": "#F59E0B", "role": "subject", "include_in_edl": True}
+        result = SpeakerInfo.from_dict(data)
+        assert result.name == "Carol"
+        assert result.color == "#F59E0B"
+        assert result.role == "subject"
+        assert result.include_in_edl is True
 
     def test_from_dict_defaults(self) -> None:
         result = SpeakerInfo.from_dict({})
         assert result.name == "Unknown"
         assert result.color == "#808080"
+        assert result.role == "unknown"
+        assert result.include_in_edl is True
 
 
 class TestSpeakerConfig:
     def test_get_speaker_info_found(self) -> None:
-        config = SpeakerConfig(speakers={"SPEAKER_00": {"name": "Alice", "color": "#3B82F6"}})
+        config = SpeakerConfig(
+            speakers={
+                "SPEAKER_00": {
+                    "name": "Alice",
+                    "color": "#3B82F6",
+                    "role": "subject",
+                    "include_in_edl": True,
+                }
+            }
+        )
         result = config.get_speaker_info("SPEAKER_00")
 
         assert result is not None
         assert result.name == "Alice"
         assert result.color == "#3B82F6"
+        assert result.role == "subject"
+        assert result.include_in_edl is True
 
     def test_get_speaker_info_not_found(self) -> None:
         config = SpeakerConfig()
@@ -267,7 +305,16 @@ class TestSpeakerConfig:
         assert result is None
 
     def test_get_speaker_name_returns_configured(self) -> None:
-        config = SpeakerConfig(speakers={"SPEAKER_00": {"name": "Alice", "color": "#3B82F6"}})
+        config = SpeakerConfig(
+            speakers={
+                "SPEAKER_00": {
+                    "name": "Alice",
+                    "color": "#3B82F6",
+                    "role": "unknown",
+                    "include_in_edl": True,
+                }
+            }
+        )
         result = config.get_speaker_name("SPEAKER_00")
         assert result == "Alice"
 
@@ -277,7 +324,16 @@ class TestSpeakerConfig:
         assert result == "SPEAKER_99"
 
     def test_get_speaker_color_returns_configured(self) -> None:
-        config = SpeakerConfig(speakers={"SPEAKER_00": {"name": "Alice", "color": "#10B981"}})
+        config = SpeakerConfig(
+            speakers={
+                "SPEAKER_00": {
+                    "name": "Alice",
+                    "color": "#10B981",
+                    "role": "unknown",
+                    "include_in_edl": True,
+                }
+            }
+        )
         result = config.get_speaker_color("SPEAKER_00")
         assert result == "#10B981"
 

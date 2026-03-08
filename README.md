@@ -182,22 +182,47 @@ Four-pass LLM analysis:
 
 Pass 4 runs automatically in `plotline run` when `cultural_flags: true` is set in config. It can also be run standalone with `plotline flags` (use `--force` to run even when disabled in config).
 
-### 5.5. Speaker Diarization (Optional)
+### 5.5. Speaker Diarization & Filtering (Optional)
 
-Identify speakers in interview audio using pyannote.audio:
+Identify and filter speakers in interview audio:
 
 ```bash
 # Install diarization dependencies
 pip install plotline[diarization]
 
-# Run diarization after transcription
-plotline diarize
+# Run pipeline (auto-stops after diarization)
+plotline run
 
-# View detected speakers
-plotline speakers --list
+# Output:
+# ✓ Extracted audio
+# ✓ Transcribed 3 interviews
+# ✓ Diarized 3 interviews (2 speakers detected)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Diarization complete. Configure speakers before LLM analysis.
+#
+# Run 'plotline speakers --preview' to identify who is who
+# Then run 'plotline run' to continue
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Edit speaker names (opens speakers.yaml in editor)
-plotline speakers --edit
+# Preview speakers with AI heuristics
+plotline speakers --preview
+
+# Output:
+# ┌─────────────┬──────────┬──────────┬─────────────────────────────────┬───────────┐
+# │ ID          │ Segments │ Duration │ Heuristic                       │ Suggested │
+# ├─────────────┼──────────┼──────────┼─────────────────────────────────┼───────────┤
+# │ SPEAKER_00  │ 45       │ 12.3 min  │ Likely INTERVIEWER (asks       │ Exclude? Y │
+# │             │          │          │ many questions, short segments)│           │
+# │ SPEAKER_01  │ 89       │ 34.7 min  │ Likely SUBJECT                  │ Exclude? N │
+# └─────────────┴──────────┴──────────┴─────────────────────────────────┴───────────┘
+
+# Configure speakers (exclude interviewer)
+plotline speakers SPEAKER_00 --name "Host" --role interviewer --exclude
+plotline speakers SPEAKER_01 --name "Jane Doe" --role subject --include
+
+# Continue pipeline (filtered speakers only)
+plotline run
 ```
 
 **Requirements:**
@@ -215,21 +240,31 @@ diarization_min_speakers: 2
 diarization_max_speakers: 5
 ```
 
-**Speaker names (`speakers.yaml`):**
+**Speaker configuration (`speakers.yaml`):**
 ```yaml
 speakers:
   SPEAKER_00:
-    name: "Interviewer"
+    name: "Host"
     color: "#3B82F6"
+    role: "interviewer"        # interviewer, subject, or unknown
+    include_in_edl: false      # Exclude from timeline
   SPEAKER_01:
     name: "Jane Doe"
     color: "#10B981"
+    role: "subject"
+    include_in_edl: true       # Include in timeline
 ```
 
-Speaker labels appear in:
+**Speaker labels appear in:**
 - LLM prompts (themes, synthesis, arc)
 - Review and transcript reports
 - EDL/FCPXML exports (as comments/keywords)
+
+**How filtering works:**
+- Excluded speakers are filtered at the enrich stage
+- Filtered segments never enter LLM analysis
+- This saves LLM tokens and processing time
+- Re-run `plotline enrich --force` after changing speaker config
 
 ### 6. Export
 

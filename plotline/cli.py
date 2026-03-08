@@ -434,17 +434,40 @@ def diarize_speakers(
 def manage_speakers(
     list_speakers: bool = typer.Option(False, "--list", "-l", help="List detected speakers"),
     edit: bool = typer.Option(False, "--edit", "-e", help="Open speakers.yaml in editor"),
+    preview: bool = typer.Option(
+        False, "--preview", "-p", help="Preview speakers with role heuristics"
+    ),
+    speaker_id: str | None = typer.Argument(None, help="Speaker ID to modify"),
+    set_name: str | None = typer.Option(None, "--name", "-n", help="Set speaker display name"),
+    set_role: str | None = typer.Option(
+        None, "--role", "-r", help="Set role (interviewer/subject/unknown)"
+    ),
+    exclude: bool = typer.Option(False, "--exclude", help="Exclude speaker from EDL/pipeline"),
+    include: bool = typer.Option(False, "--include", help="Include speaker in EDL/pipeline"),
 ) -> None:
-    """Manage speaker names and colors.
+    """Manage speaker names, roles, and filtering.
 
-    View or edit the speakers.yaml file that maps speaker IDs to display names.
+    Examples:
+        plotline speakers --list
+        plotline speakers --preview
+        plotline speakers --edit
+        plotline speakers SPEAKER_00 --name "Host" --role interviewer --exclude
+        plotline speakers SPEAKER_01 --name "Jane Doe" --role subject --include
     """
     project_dir = find_project_dir()
     if not project_dir:
         console.print("[red]Error: Not in a Plotline project directory[/red]")
         raise typer.Exit(1)
 
-    from plotline.diarize.speakers import get_all_speakers_from_project, load_speaker_config
+    from plotline.diarize.speakers import (
+        SpeakerConfig,
+        format_duration,
+        get_all_speakers_from_project,
+        get_speaker_statistics,
+        identify_speaker_role,
+        load_speaker_config,
+        save_speaker_config,
+    )
 
     speakers_file = project_dir / "speakers.yaml"
 
@@ -460,27 +483,136 @@ def manage_speakers(
         console.print(f"[green]✓[/green] Edited {speakers_file}")
         return
 
-    speakers = get_all_speakers_from_project(project_dir)
+    if preview:
+        speakers = get_all_speakers_from_project(project_dir)
+        if not speakers:
+            console.print("[yellow]No speakers detected yet.[/yellow]")
+            console.print("[dim]Run 'plotline diarize' to detect speakers.[/dim]")
+            return
 
+        table = Table(title="Speaker Preview (with heuristics)")
+        table.add_column("ID", style="cyan")
+        table.add_column("Segments", style="dim")
+        table.add_column("Duration", style="dim")
+        table.add_column("Heuristic", style="yellow")
+        table.add_column("Suggested", style="green")
+
+        for speaker_id in sorted(speakers.keys()):
+            stats = get_speaker_statistics(project_dir, speaker_id)
+            heuristic = identify_speaker_role(stats)
+
+            table.add_row(
+                speaker_id,
+                str(stats["segment_count"]),
+                format_duration(stats["total_duration"]),
+                heuristic["reason"],
+                f"Exclude? {'Y' if heuristic['suggest_exclude'] else 'N'}",
+            )
+
+        console.print(table)
+        console.print(
+            "\n[dim]To exclude interviewer: plotline speakers <ID> --role interviewer --exclude[/dim]"
+        )
+        return
+
+    if speaker_id:
+        config = load_speaker_config(project_dir)
+
+        if set_name or set_role or exclude or include:
+            if set_role and set_role not in ("interviewer", "subject", "unknown"):
+                console.print(
+                    "[red]Error: Role must be 'interviewer', 'subject', or 'unknown'[/red]"
+                )
+                raise typer.Exit(1)
+
+            existing = config.speakers.get(speaker_id, {})
+            if not existing:
+                idx = 0
+                if speaker_id.startswith("SPEAKER_"):
+                    try:
+                        idx = int(speaker_id.split("_")[1])
+                    except (IndexError, ValueError):
+                        pass
+                existing = {
+                    "name": f"Speaker {idx + 1}",
+                    "color": f"#{idx % 10:06X}",
+                    "role": "unknown",
+                    "include_in_edl": True,
+                }
+
+            if set_name:
+                existing["name"] = set_name
+            if set_role:
+                existing["role"] = set_role
+            if exclude:
+                existing["include_in_edl"] = False
+            if include:
+                existing["include_in_edl"] = True
+
+            config.speakers[speaker_id] = existing
+            save_speaker_config(config, speakers_file)
+
+            role = existing.get("role", "unknown")
+            in_edl = existing.get("include_in_edl", True)
+            console.print(
+                f"[green]✓[/green] Updated {speaker_id}: name={existing.get('name')}, role={role}, include_in_edl={in_edl}"
+            )
+        else:
+            info = config.get_speaker_info(speaker_id)
+            if info:
+                console.print(f"\n[bold]{speaker_id}[/bold]")
+                console.print(f"  Name: {info.name}")
+                console.print(f"  Role: {info.role}")
+                console.print(f"  Include in EDL: {info.include_in_edl}")
+                console.print(f"  Color: {info.color}")
+            else:
+                console.print(f"[yellow]Speaker {speaker_id} not found in configuration[/yellow]")
+                console.print("[dim]Run 'plotline speakers --list' to see available speakers[/dim]")
+        return
+
+    speakers = get_all_speakers_from_project(project_dir)
     if not speakers:
         console.print("[yellow]No speakers detected yet.[/yellow]")
         console.print("[dim]Run 'plotline diarize' to detect speakers in your interviews.[/dim]")
         return
 
-    table = Table(title="Speakers")
-    table.add_column("ID", style="dim")
-    table.add_column("Name", style="cyan")
-    table.add_column("Color", style="green")
+    config = load_speaker_config(project_dir)
 
-    for speaker_id, info in sorted(speakers.items()):
-        color = info.get("color", "#808080")
-        name = info.get("name", speaker_id)
-        table.add_row(speaker_id, name, color)
+    table = Table(title="Speakers")
+    table.add_column("ID", style="cyan")
+    table.add_column("Name", style="green")
+    table.add_column("Role", style="yellow")
+    table.add_column("In EDL", style="dim")
+    table.add_column("Color", style="dim")
+
+    for speaker_id in sorted(speakers.keys()):
+        info = config.get_speaker_info(speaker_id)
+        if info:
+            table.add_row(
+                speaker_id,
+                info.name,
+                info.role,
+                "✓" if info.include_in_edl else "✗",
+                info.color,
+            )
+        else:
+            table.add_row(
+                speaker_id,
+                speakers[speaker_id].get("name", speaker_id),
+                "unknown",
+                "✓",
+                speakers[speaker_id].get("color", "#808080"),
+            )
 
     console.print(table)
 
+    excluded = config.get_excluded_speakers()
+    if excluded:
+        console.print(f"\n[yellow]Excluded from EDL: {', '.join(excluded)}[/yellow]")
+
     if speakers_file.exists():
-        console.print(f"\n[dim]Edit speaker names: {speakers_file}[/dim]")
+        console.print(f"\n[dim]Edit: {speakers_file}[/dim]")
+        console.print("[dim]Preview: plotline speakers --preview[/dim]")
     else:
         console.print("\n[dim]Run 'plotline diarize' to create speakers.yaml[/dim]")
 
@@ -1684,6 +1816,47 @@ def run_pipeline(
             if config.diarization_enabled:
                 console.print("[dim]Stage: diarize[/dim]")
                 diarize_speakers(force=False)
+
+                speakers_file = project_dir / "speakers.yaml"
+                if speakers_file.exists():
+                    from plotline.diarize.speakers import load_speaker_config
+
+                    speaker_config = load_speaker_config(project_dir)
+                    excluded = speaker_config.get_excluded_speakers()
+
+                    if not any(
+                        info.get("role") not in (None, "unknown")
+                        for info in speaker_config.speakers.values()
+                    ):
+                        console.print(
+                            "\n[yellow]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/yellow]"
+                        )
+                        console.print(
+                            "[yellow]Diarization complete! Configure speakers before LLM analysis.[/yellow]"
+                        )
+                        console.print(
+                            "[yellow]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/yellow]\n"
+                        )
+                        console.print(
+                            "  [cyan]plotline speakers --preview[/cyan]     # Identify who is who"
+                        )
+                        console.print(
+                            "  [cyan]plotline speakers <ID> --exclude[/cyan]  # Exclude interviewer"
+                        )
+                        console.print(
+                            "  [cyan]plotline run[/cyan]                # Continue pipeline\n"
+                        )
+
+                        from rich.prompt import Confirm
+
+                        should_continue = Confirm.ask(
+                            "Continue without configuring speakers?", default=False
+                        )
+                        if not should_continue:
+                            console.print(
+                                "\n[dim]Pipeline paused. Configure speakers and run 'plotline run' to continue.[/dim]"
+                            )
+                            raise typer.Exit(0)
         elif stage == "analyze":
             analyze_delivery(force=False)
         elif stage == "enrich":
