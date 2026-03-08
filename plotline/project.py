@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from plotline.config import create_default_config, write_config
+from plotline.io import read_json, write_json
 
 
 class Project:
@@ -173,21 +174,6 @@ def probe_video(path: Path) -> dict[str, Any]:
         "codec": codec,
         "sample_rate": sample_rate,
     }
-
-
-def read_json(path: Path) -> dict[str, Any]:
-    """Read JSON file."""
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_json(path: Path, data: dict[str, Any]) -> None:
-    """Write JSON file atomically with pretty formatting."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_suffix(".tmp")
-    with open(temp_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    temp_path.rename(path)
 
 
 def generate_interview_id(manifest: dict[str, Any]) -> str:

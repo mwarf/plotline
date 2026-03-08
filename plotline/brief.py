@@ -69,7 +69,7 @@ def parse_markdown_brief(content: str) -> dict[str, Any]:
         "avoid_topics": [],
     }
 
-    sections = re.split(r"\n#{1,3}\s+", content)
+    sections = re.split(r"(?m)^#{1,3}\s+", content)
 
     for section in sections:
         if not section.strip():

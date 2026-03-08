@@ -7,6 +7,7 @@ defaults, and validating all parameters.
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any
 
@@ -156,7 +157,7 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> dict[str, Any]:
             with open(profile_file) as f:
                 return yaml.safe_load(f)
     if name in BUILTIN_PROFILES:
-        return BUILTIN_PROFILES[name].copy()
+        return copy.deepcopy(BUILTIN_PROFILES[name])
     raise ValueError(f"Unknown profile: {name}")
 
 
