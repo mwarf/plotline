@@ -188,7 +188,6 @@ def add_videos(
                     "analyzed": False,
                     "enriched": False,
                     "themes": False,
-                    "reviewed": False,
                 },
             }
 
@@ -460,8 +459,8 @@ def manage_speakers(
         raise typer.Exit(1)
 
     from plotline.diarize.speakers import (
-        SpeakerConfig,
-        format_duration,
+        DEFAULT_COLORS,
+        format_duration as format_speaker_duration,
         get_all_speakers_from_project,
         get_speaker_statistics,
         identify_speaker_role,
@@ -497,14 +496,14 @@ def manage_speakers(
         table.add_column("Heuristic", style="yellow")
         table.add_column("Suggested", style="green")
 
-        for speaker_id in sorted(speakers.keys()):
-            stats = get_speaker_statistics(project_dir, speaker_id)
+        for spk_id in sorted(speakers.keys()):
+            stats = get_speaker_statistics(project_dir, spk_id)
             heuristic = identify_speaker_role(stats)
 
             table.add_row(
-                speaker_id,
+                spk_id,
                 str(stats["segment_count"]),
-                format_duration(stats["total_duration"]),
+                format_speaker_duration(stats["total_duration"]),
                 heuristic["reason"],
                 f"Exclude? {'Y' if heuristic['suggest_exclude'] else 'N'}",
             )
@@ -535,7 +534,7 @@ def manage_speakers(
                         pass
                 existing = {
                     "name": f"Speaker {idx + 1}",
-                    "color": f"#{idx % 10:06X}",
+                    "color": DEFAULT_COLORS[idx % len(DEFAULT_COLORS)],
                     "role": "unknown",
                     "include_in_edl": True,
                 }
@@ -585,11 +584,11 @@ def manage_speakers(
     table.add_column("In EDL", style="dim")
     table.add_column("Color", style="dim")
 
-    for speaker_id in sorted(speakers.keys()):
-        info = config.get_speaker_info(speaker_id)
+    for spk_id in sorted(speakers.keys()):
+        info = config.get_speaker_info(spk_id)
         if info:
             table.add_row(
-                speaker_id,
+                spk_id,
                 info.name,
                 info.role,
                 "✓" if info.include_in_edl else "✗",
@@ -597,11 +596,11 @@ def manage_speakers(
             )
         else:
             table.add_row(
-                speaker_id,
-                speakers[speaker_id].get("name", speaker_id),
+                spk_id,
+                speakers[spk_id].get("name", spk_id),
                 "unknown",
                 "✓",
-                speakers[speaker_id].get("color", "#808080"),
+                speakers[spk_id].get("color", "#808080"),
             )
 
     console.print(table)
@@ -738,8 +737,6 @@ def enrich(
 
 @app.command("themes")
 def extract_themes(
-    interview: str | None = typer.Option(None, "--interview", "-i", help="Specific interview ID"),
-    all_interviews: bool = typer.Option(False, "--all", "-a", help="Process all interviews"),
     force: bool = typer.Option(False, "--force", "-f", help="Re-extract even if already done"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show prompt without sending to LLM"),
 ) -> None:
@@ -1014,6 +1011,21 @@ def _save_approvals(project_dir: Path, approvals: dict) -> None:
     write_json(approvals_path, approvals)
 
 
+def _validate_segment_exists(segment_id: str, selections: dict) -> bool:
+    """Check if a segment ID exists in selections."""
+    for seg in selections.get("segments", []):
+        if seg.get("segment_id") == segment_id:
+            return True
+    return False
+
+
+def _get_all_segment_ids(selections: dict) -> set[str]:
+    """Get all segment IDs from selections."""
+    return {
+        seg.get("segment_id") for seg in selections.get("segments", []) if seg.get("segment_id")
+    }
+
+
 def _update_approval_status(approvals: dict, segment_id: str, status: str) -> bool:
     """Update segment approval status. Returns True if changed."""
     approval_map = {s["segment_id"]: s for s in approvals.get("segments", [])}
@@ -1055,10 +1067,14 @@ def approve_segment(
 
     selections = read_json(selections_path)
     approvals = _load_approvals(project_dir)
+    all_segment_ids = _get_all_segment_ids(selections)
 
     approved_count = 0
 
     if segment_id:
+        if segment_id not in all_segment_ids:
+            console.print(f"[red]Error: Segment '{segment_id}' not found in selections[/red]")
+            raise typer.Exit(1)
         if _update_approval_status(approvals, segment_id, "approved"):
             approved_count = 1
             console.print(f"[green]✓[/green] Approved: {segment_id}")
@@ -1123,10 +1139,14 @@ def reject_segment(
 
     selections = read_json(selections_path)
     approvals = _load_approvals(project_dir)
+    all_segment_ids = _get_all_segment_ids(selections)
 
     rejected_count = 0
 
     if segment_id:
+        if segment_id not in all_segment_ids:
+            console.print(f"[red]Error: Segment '{segment_id}' not found in selections[/red]")
+            raise typer.Exit(1)
         if _update_approval_status(approvals, segment_id, "rejected"):
             rejected_count = 1
             console.print(f"[red]✗[/red] Rejected: {segment_id}")
@@ -1174,10 +1194,14 @@ def unapprove_segment(
 
     selections = read_json(selections_path)
     approvals = _load_approvals(project_dir)
+    all_segment_ids = _get_all_segment_ids(selections)
 
     reset_count = 0
 
     if segment_id:
+        if segment_id not in all_segment_ids:
+            console.print(f"[red]Error: Segment '{segment_id}' not found in selections[/red]")
+            raise typer.Exit(1)
         if _update_approval_status(approvals, segment_id, "pending"):
             reset_count = 1
             console.print(f"[dim]○[/dim] Reset: {segment_id}")
@@ -1220,16 +1244,19 @@ def show_approvals() -> None:
     selections = read_json(selections_path)
     approvals = _load_approvals(project_dir)
 
-    approval_map = {
-        s["segment_id"]: s.get("status", "pending") for s in approvals.get("segments", [])
-    }
+    approval_map = {}
+    for s in approvals.get("segments", []):
+        seg_id = s.get("segment_id")
+        if seg_id:
+            approval_map[seg_id] = s.get("status", "pending")
 
-    total = len(selections.get("segments", []))
+    selection_segments = selections.get("segments", [])
+    total = len(selection_segments)
     approved = sum(
-        1 for s in selections.get("segments", []) if approval_map.get(s["segment_id"]) == "approved"
+        1 for s in selection_segments if approval_map.get(s.get("segment_id")) == "approved"
     )
     rejected = sum(
-        1 for s in selections.get("segments", []) if approval_map.get(s["segment_id"]) == "rejected"
+        1 for s in selection_segments if approval_map.get(s.get("segment_id")) == "rejected"
     )
     pending = total - approved - rejected
 
@@ -1258,7 +1285,7 @@ def _build_status_json(manifest: dict, project_dir: Path) -> dict:
     interviews_data = []
 
     for interview in interviews:
-        stages = interview.get("stages", {})
+        stages = interview.get("stages", {}).copy()
         completed = sum(1 for v in stages.values() if v)
         total = len(stages)
         interviews_data.append(
@@ -1291,13 +1318,26 @@ def _build_status_json(manifest: dict, project_dir: Path) -> dict:
 def _suggest_next_stage(manifest: dict) -> str:
     """Suggest the next pipeline stage to run."""
     stage_order = ["extract", "transcribe", "analyze", "enrich", "themes", "synthesize", "arc"]
+    stage_key_map = {
+        "extract": "extracted",
+        "transcribe": "transcribed",
+        "analyze": "analyzed",
+        "enrich": "enriched",
+        "themes": "themes",
+        "synthesize": None,
+        "arc": None,
+    }
 
     for stage in stage_order:
-        stage_key = (
-            f"{stage}ed" if stage in ("extract", "transcribe", "analyze", "enrich") else stage
-        )
-        if stage == "transcribe":
-            stage_key = "transcribed"
+        stage_key = stage_key_map.get(stage)
+        if stage_key is None:
+            project_level_files = {
+                "synthesize": manifest.get("data", {}).get("synthesis"),
+                "arc": manifest.get("data", {}).get("selections"),
+            }
+            if not project_level_files.get(stage):
+                return stage
+            continue
 
         all_done = all(
             i.get("stages", {}).get(stage_key, False) for i in manifest.get("interviews", [])
@@ -1312,14 +1352,14 @@ def _has_completed_llm_stages(manifest: dict) -> bool:
     """Check if any LLM stages have been completed."""
     for interview in manifest.get("interviews", []):
         stages = interview.get("stages", {})
-        if stages.get("themes") or stages.get("synthesized"):
+        if stages.get("themes"):
             return True
     return False
 
 
 def _check_brief_staleness(project_dir: Path) -> list[str]:
     """Check if brief was modified after LLM stages ran. Returns warning messages."""
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     warnings = []
     brief_path = project_dir / "brief.json"
@@ -1328,7 +1368,7 @@ def _check_brief_staleness(project_dir: Path) -> list[str]:
         return []
 
     brief_mtime = brief_path.stat().st_mtime
-    brief_time = datetime.fromtimestamp(brief_mtime)
+    brief_time = datetime.fromtimestamp(brief_mtime, tz=timezone.utc)
 
     synthesis_path = project_dir / "data" / "synthesis.json"
     if synthesis_path.exists():
@@ -1339,11 +1379,13 @@ def _check_brief_staleness(project_dir: Path) -> list[str]:
         if synth_time_str:
             try:
                 synth_time = datetime.fromisoformat(synth_time_str)
+                if synth_time.tzinfo is None:
+                    synth_time = synth_time.replace(tzinfo=timezone.utc)
                 if brief_time > synth_time:
                     warnings.append(
                         "Brief modified after synthesis. Re-run: plotline run --from themes"
                     )
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
     arc_path = project_dir / "data" / "arc.json"
@@ -1355,12 +1397,79 @@ def _check_brief_staleness(project_dir: Path) -> list[str]:
         if arc_time_str:
             try:
                 arc_time = datetime.fromisoformat(arc_time_str)
+                if arc_time.tzinfo is None:
+                    arc_time = arc_time.replace(tzinfo=timezone.utc)
                 if brief_time > arc_time:
                     warnings.append("Brief modified after arc. Re-run: plotline run --from arc")
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
     return warnings
+
+
+def _generate_all_reports(
+    project_dir: Path, manifest: dict, config, open_browser: bool = False
+) -> Path:
+    """Generate all reports for a project. Returns path to dashboard."""
+    from plotline.reports.compare import generate_compare_report
+    from plotline.reports.coverage import generate_coverage
+    from plotline.reports.dashboard import generate_dashboard
+    from plotline.reports.review import generate_review
+    from plotline.reports.summary import generate_summary
+    from plotline.reports.themes import generate_themes_report
+    from plotline.reports.transcript import generate_transcript
+
+    output_path = generate_dashboard(
+        project_path=project_dir, manifest=manifest, open_browser=False
+    )
+
+    try:
+        generate_review(project_path=project_dir, manifest=manifest, open_browser=False)
+    except FileNotFoundError:
+        pass
+
+    try:
+        generate_summary(project_path=project_dir, manifest=manifest, open_browser=False)
+    except FileNotFoundError:
+        pass
+
+    try:
+        generate_coverage(project_path=project_dir, manifest=manifest, open_browser=False)
+    except FileNotFoundError:
+        pass
+
+    try:
+        generate_themes_report(project_path=project_dir, manifest=manifest, open_browser=False)
+    except FileNotFoundError:
+        pass
+
+    try:
+        generate_compare_report(
+            project_path=project_dir, manifest=manifest, config=config, open_browser=False
+        )
+    except FileNotFoundError:
+        pass
+
+    interviews = manifest.get("interviews")
+    if isinstance(interviews, list):
+        for interview in interviews:
+            if isinstance(interview, dict) and "id" in interview:
+                try:
+                    generate_transcript(
+                        project_path=project_dir,
+                        manifest=manifest,
+                        interview_id=interview["id"],
+                        open_browser=False,
+                    )
+                except FileNotFoundError:
+                    pass
+
+    if open_browser:
+        from plotline.reports.generator import ReportGenerator
+
+        ReportGenerator().open_in_browser(output_path)
+
+    return output_path
 
 
 @app.command("status")
@@ -1603,59 +1712,13 @@ def generate_report(
                 open_browser=open_browser,
             )
         elif report_type == "all":
-            from plotline.reports.dashboard import generate_dashboard
-            from plotline.reports.review import generate_review
-            from plotline.reports.summary import generate_summary
-            from plotline.reports.coverage import generate_coverage
-            from plotline.reports.themes import generate_themes_report
-            from plotline.reports.compare import generate_compare_report
-            from plotline.reports.transcript import generate_transcript
-
             from plotline.config import load_config
 
             config = load_config(project_dir)
 
-            output_path = generate_dashboard(project_path=project_dir, manifest=manifest)
-
-            try:
-                generate_review(project_path=project_dir, manifest=manifest)
-            except FileNotFoundError:
-                pass
-
-            try:
-                generate_summary(project_path=project_dir, manifest=manifest)
-            except FileNotFoundError:
-                pass
-
-            generate_coverage(project_path=project_dir, manifest=manifest)
-
-            try:
-                generate_themes_report(project_path=project_dir, manifest=manifest)
-            except FileNotFoundError:
-                pass
-
-            try:
-                generate_compare_report(project_path=project_dir, manifest=manifest, config=config)
-            except FileNotFoundError:
-                pass
-
-            interviews = manifest.get("interviews")
-            if isinstance(interviews, list):
-                for interview in interviews:
-                    if isinstance(interview, dict) and "id" in interview:
-                        try:
-                            generate_transcript(
-                                project_path=project_dir,
-                                manifest=manifest,
-                                interview_id=interview["id"],
-                            )
-                        except FileNotFoundError:
-                            pass
-
-            if open_browser:
-                from plotline.reports.generator import ReportGenerator
-
-                ReportGenerator().open_in_browser(output_path)
+            output_path = _generate_all_reports(
+                project_dir, manifest, config, open_browser=open_browser
+            )
 
             console.print("[green]✓[/green] Generated all reports")
             return
@@ -1790,7 +1853,16 @@ def run_pipeline(
 
     config = load_config(project_dir)
 
-    stages = ["extract", "transcribe", "analyze", "enrich", "themes", "synthesize", "arc"]
+    stages = [
+        "extract",
+        "transcribe",
+        "diarize",
+        "analyze",
+        "enrich",
+        "themes",
+        "synthesize",
+        "arc",
+    ]
     stage_map = {s: i for i, s in enumerate(stages)}
 
     if from_stage and from_stage not in stage_map:
@@ -1813,8 +1885,8 @@ def run_pipeline(
                 force=False,
                 backend=config.whisper_backend,
             )
+        elif stage == "diarize":
             if config.diarization_enabled:
-                console.print("[dim]Stage: diarize[/dim]")
                 diarize_speakers(force=False)
 
                 speakers_file = project_dir / "speakers.yaml"
@@ -1822,14 +1894,13 @@ def run_pipeline(
                     from plotline.diarize.speakers import load_speaker_config
 
                     speaker_config = load_speaker_config(project_dir)
-                    excluded = speaker_config.get_excluded_speakers()
 
                     if not any(
                         info.get("role") not in (None, "unknown")
                         for info in speaker_config.speakers.values()
                     ):
                         console.print(
-                            "\n[yellow]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/yellow]"
+                            "\n[yellow]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/yellow]"
                         )
                         console.print(
                             "[yellow]Diarization complete! Configure speakers before LLM analysis.[/yellow]"
@@ -1857,6 +1928,8 @@ def run_pipeline(
                                 "\n[dim]Pipeline paused. Configure speakers and run 'plotline run' to continue.[/dim]"
                             )
                             raise typer.Exit(0)
+            else:
+                console.print("[dim]Diarization disabled in config, skipping...[/dim]")
         elif stage == "analyze":
             analyze_delivery(force=False)
         elif stage == "enrich":
@@ -1875,59 +1948,11 @@ def run_pipeline(
         console.print()
 
     console.print("[dim]Stage: reports[/dim]")
-    from plotline.reports.dashboard import generate_dashboard
-    from plotline.reports.review import generate_review
-    from plotline.reports.summary import generate_summary
-    from plotline.reports.coverage import generate_coverage
-    from plotline.reports.themes import generate_themes_report
-    from plotline.reports.compare import generate_compare_report
-    from plotline.reports.transcript import generate_transcript
 
     project = Project(project_dir)
     manifest = project.load_manifest()
 
-    generate_dashboard(project_path=project_dir, manifest=manifest, open_browser=False)
-
-    try:
-        generate_review(project_path=project_dir, manifest=manifest, open_browser=False)
-    except FileNotFoundError:
-        pass
-
-    try:
-        generate_summary(project_path=project_dir, manifest=manifest, open_browser=False)
-    except FileNotFoundError:
-        pass
-
-    try:
-        generate_coverage(project_path=project_dir, manifest=manifest, open_browser=False)
-    except FileNotFoundError:
-        pass
-
-    try:
-        generate_themes_report(project_path=project_dir, manifest=manifest, open_browser=False)
-    except FileNotFoundError:
-        pass
-
-    try:
-        generate_compare_report(
-            project_path=project_dir, manifest=manifest, config=config, open_browser=False
-        )
-    except FileNotFoundError:
-        pass
-
-    interviews = manifest.get("interviews")
-    if isinstance(interviews, list):
-        for interview in interviews:
-            if isinstance(interview, dict) and "id" in interview:
-                try:
-                    generate_transcript(
-                        project_path=project_dir,
-                        manifest=manifest,
-                        interview_id=interview["id"],
-                        open_browser=False,
-                    )
-                except FileNotFoundError:
-                    pass
+    _generate_all_reports(project_dir, manifest, config, open_browser=False)
 
     console.print()
 
@@ -2185,16 +2210,18 @@ def diagnose_project(
     manifest = project.load_manifest()
 
     for interview in manifest.get("interviews", []):
-        source = Path(interview.get("source_file", ""))
-        if source and not source.exists():
-            issues.append(
-                {
-                    "type": "missing_source",
-                    "interview": interview.get("id", "unknown"),
-                    "message": f"Source file not found: {source}",
-                    "fix": None,
-                }
-            )
+        source_str = interview.get("source_file", "")
+        if source_str:
+            source = Path(source_str)
+            if not source.exists():
+                issues.append(
+                    {
+                        "type": "missing_source",
+                        "interview": interview.get("id", "unknown"),
+                        "message": f"Source file not found: {source}",
+                        "fix": None,
+                    }
+                )
 
     for interview in manifest.get("interviews", []):
         stages = interview.get("stages", {})
