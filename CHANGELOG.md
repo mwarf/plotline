@@ -2,6 +2,58 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [0.3.5] - 2026-03-08
+
+Full pipeline audit — fixed bugs across all 5 stages (Prep, Extract, Transcribe, Analyze, Enrich, LLM, Reports, Export).
+
+### Fixed
+
+#### Stage 1: Prep & Config
+
+- **config.py**: Fixed global profile mutation — `load_profile()` now uses `copy.deepcopy()` instead of shallow `.copy()` to prevent corruption of `BUILTIN_PROFILES`
+- **brief.py**: Fixed markdown regex — `(?m)^#{1,3}\s+` now correctly matches headings on line 1
+- **project.py**: Removed duplicate `read_json`/`write_json` functions, now imports from `plotline.io` (DRY)
+
+#### Stage 2: Extract & Transcribe
+
+- **engine.py**: Fixed confidence normalization formula — `max(0.0, min(1.0, 1 + confidence))` instead of misleading `(confidence + 1) / 1`
+- **engine.py**: Fixed import to use `plotline.io.write_json` instead of `plotline.project`
+- **audio.py**: Added cleanup on partial extraction failure — removes `audio_16k.wav` if `audio_full.wav` extraction fails
+- **engine.py**: Simplified segment ID generation — already using enumerate correctly
+
+#### Stage 3: Analyze & Enrich
+
+- **delivery.py**: Fixed import to use `plotline.io`
+- **scoring.py**: Fixed import to use `plotline.io`
+- **merge.py**: Fixed import to use `plotline.io`
+- **merge.py**: Added KeyError protection — segment dictionaries now filter for `segment_id` presence
+
+#### Stage 4: LLM Passes
+
+- **themes.py**: Fixed import to use `plotline.io`
+- **synthesis.py**: Fixed import to use `plotline.io`
+- **arc.py**: Fixed import to use `plotline.io`
+- **arc.py**: Added KeyError protection in `build_narrative_arc()` and `create_selections_from_arc()`
+- **flags.py**: Fixed import to use `plotline.io`
+- **flags.py**: Added KeyError protection — `segment_by_id` now filters for valid segment IDs
+
+#### Stage 5: Reports & Export
+
+- **All 9 report/export modules**: Fixed imports to use `plotline.io` instead of `plotline.project`
+  - `reports/compare.py`, `reports/coverage.py`, `reports/dashboard.py`, `reports/review.py`
+  - `reports/summary.py`, `reports/themes.py`, `reports/transcript.py`
+  - `export/edl.py`, `export/fcpxml.py`
+
+### Architecture Improvements
+
+- **DRY Compliance**: All modules now import I/O functions from central `plotline/io.py`
+- **KeyError Protection**: All segment dictionary constructions now validate key existence
+- **Atomic Writes**: Consistent use of `tempfile.NamedTemporaryFile` for crash-safe writes
+
+### Test Results
+
+- **439 passed, 0 failed, 2 skipped** — all tests continue to pass
+
 ## [0.3.4] - 2026-03-08
 
 CLI audit — fixed 17 bugs identified in comprehensive cli.py review.
