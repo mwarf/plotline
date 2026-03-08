@@ -41,7 +41,8 @@ def build_narrative_arc(
 
     segments_by_id = {}
     for seg in all_segments:
-        segments_by_id[seg["segment_id"]] = seg
+        if "segment_id" in seg:
+            segments_by_id[seg["segment_id"]] = seg
 
     top_segments = sorted(
         all_segments,
@@ -108,13 +109,16 @@ def create_selections_from_arc(
     """
     segments_by_id = {}
     for seg in all_segments:
-        segments_by_id[seg["segment_id"]] = seg
+        if "segment_id" in seg:
+            segments_by_id[seg["segment_id"]] = seg
 
     selections = []
     total_duration = 0
 
     for arc_item in arc.get("arc", []):
-        segment_id = arc_item["segment_id"]
+        segment_id = arc_item.get("segment_id")
+        if not segment_id:
+            continue
         source_seg = segments_by_id.get(segment_id, {})
 
         duration = source_seg.get("end", 0) - source_seg.get("start", 0)
@@ -175,7 +179,7 @@ def run_arc_construction(
     Returns:
         Dict with arc results
     """
-    from plotline.project import read_json, write_json
+    from plotline.io import read_json, write_json
 
     data_dir = project_path / "data"
     segments_dir = data_dir / "segments"

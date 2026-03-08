@@ -93,7 +93,7 @@ def run_flags(
     Returns:
         Dict with flagging summary
     """
-    from plotline.project import read_json, write_json
+    from plotline.io import read_json, write_json
 
     if not config.cultural_flags and not force:
         return {
@@ -136,7 +136,7 @@ def run_flags(
     )
 
     flags = flags_result.get("flags", [])
-    segment_by_id = {s.get("segment_id"): s for s in segments}
+    segment_by_id = {s["segment_id"]: s for s in segments if s.get("segment_id")}
 
     flagged_count = 0
     for flag in flags:

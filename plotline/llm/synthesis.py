@@ -99,7 +99,7 @@ def run_synthesis(
     Returns:
         Dict with synthesis results
     """
-    from plotline.project import read_json, write_json
+    from plotline.io import read_json, write_json
 
     data_dir = project_path / "data"
     themes_dir = data_dir / "themes"
