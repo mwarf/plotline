@@ -55,29 +55,21 @@ plotline compare --open
 | `X` | Reject current segment |
 | `F` | Flag for review |
 | `Space` | Play/pause audio |
-| `←` `→` | Navigate between segments |
-| `↑` `↓` | Scroll segment list |
-| `/` | Focus search bar |
-| `Esc` | Clear selection |
+| `↑` `↓` | Navigate between segments |
 
 ### Transcript Report
 
 | Key | Action |
 |-----|--------|
 | `Space` | Play/pause audio |
-| `←` `→` | Jump 5 seconds |
-| `Shift` `←` `→` | Jump 30 seconds |
-| `↑` `↓` | Navigate segments |
-| `/` | Focus search bar |
+| `↑` `↓` or `j` `k` | Navigate segments |
+| `Esc` | Close audio player |
 
 ### Themes Report
 
 | Key | Action |
 |-----|--------|
-| `↑` `↓` | Navigate themes |
-| `Enter` | Select theme |
-| `/` | Focus search bar |
-| `Esc` | Clear filter |
+| `Esc` | Close audio player |
 
 ---
 
@@ -147,7 +139,7 @@ Your primary editorial workspace for approving segments.
 3. Approve (A) or Reject (X)
 4. Add your own notes if needed
 5. Reorder segments by dragging
-6. Click "Export EDL" when done
+6. Click "Export" when done to download the EDL
 
 ---
 
