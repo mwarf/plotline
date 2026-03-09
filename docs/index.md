@@ -18,7 +18,13 @@ Welcome to the Plotline documentation. Plotline is an AI-assisted documentary ed
 
 ## Visual References
 
-- **[Workflow Diagrams](workflow-diagram.md)** — Visual comparison of traditional vs Plotline workflows, time savings, and data flow architecture
+- **[Workflow Diagrams](workflow-diagram.md)** — Visual comparison of traditional vs Plotline workflows, time savings, AI vs human responsibilities, and data flow architecture
+
+## Presentations
+
+- **[HTML Presentation](presentation.html)** — Interactive reveal.js deck with embedded Mermaid diagrams (open in browser, press Space to advance)
+- **[Markdown Presentation](presentation.md)** — Import-ready format for Google Slides, Keynote, or PowerPoint
+- **[PowerPoint Markdown](plotline-presentation.pptx.md)** — Pandoc-ready format for direct PowerPoint export
 
 ## Reference
 

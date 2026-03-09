@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plotline: AI-Assisted Documentary Editing</title>
+    
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/theme/black.css">
+    
+    <!-- Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <style>
+        :root {
+            --r-main-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+            --r-heading-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            --r-code-font: "SF Mono", "Fira Code", Consolas, monospace;
+            --r-main-font-size: 32px;
+            --r-heading1-size: 2.5em;
+            --r-heading2-size: 1.8em;
+            --r-heading3-size: 1.3em;
+            --r-main-color: #f8fafc;
+            --r-heading-color: #f8fafc;
+            --r-link-color: #3b82f6;
+            --r-background-color: #0f172a;
+        }
+        
+        .reveal h1, .reveal h2, .reveal h3 {
+            text-transform: none;
+            font-weight: 600;
+        }
+        
+        .reveal section {
+            text-align: left;
+        }
+        
+        .reveal .center {
+            text-align: center;
+        }
+        
+        .reveal .tagline {
+            font-size: 1.5em;
+            color: #94a3b8;
+            margin-top: 0.5em;
+        }
+        
+        .reveal .pitch {
+            font-size: 1.2em;
+            color: #3b82f6;
+            margin-top: 1em;
+        }
+        
+        .reveal .highlight {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .reveal .metric {
+            display: inline-block;
+            background: #1e293b;
+            padding: 0.5em 1em;
+            border-radius: 8px;
+            margin: 0.25em;
+            font-size: 0.9em;
+        }
+        
+        .reveal .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2em;
+        }
+        
+        .reveal .stat-box {
+            background: #1e293b;
+            padding: 1.5em;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        
+        .reveal .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #22c55e;
+        }
+        
+        .reveal .stat-label {
+            font-size: 0.9em;
+            color: #94a3b8;
+            margin-top: 0.25em;
+        }
+        
+        .reveal .screenshot {
+            background: #1e293b;
+            border: 2px dashed #475569;
+            border-radius: 8px;
+            padding: 2em;
+            text-align: center;
+            color: #64748b;
+            font-style: italic;
+        }
+        
+        .reveal .code-block {
+            background: #1e293b;
+            padding: 1em;
+            border-radius: 8px;
+            font-family: var(--r-code-font);
+            font-size: 0.85em;
+            text-align: left;
+            margin: 1em 0;
+        }
+        
+        .reveal .philosophy-box {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 1.5em;
+            border-radius: 12px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .reveal ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .reveal ul li {
+            position: relative;
+            padding-left: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        .reveal ul li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #3b82f6;
+        }
+        
+        .reveal .emoji {
+            font-size: 1.2em;
+        }
+        
+        .mermaid {
+            text-align: center;
+            background: #1e293b;
+            padding: 1em;
+            border-radius: 8px;
+            margin: 1em 0;
+        }
+        
+        .reveal .small-text {
+            font-size: 0.7em;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Title -->
+            <section class="center">
+                <h1>Plotline</h1>
+                <div class="tagline">AI-Assisted Documentary Editing</div>
+                <div class="pitch">From raw interviews to NLE timeline in 85% less time</div>
+                <p class="small-text" style="margin-top: 3em;">
+                    Press <kbd>Space</kbd> or <kbd>→</kbd> to advance
+                </p>
+            </section>
+
+            <!-- Slide 2: The Problem -->
+            <section>
+                <h2>The Problem</h2>
+                <div class="philosophy-box" style="margin-top: 1em;">
+                    <h3 style="color: #f8fafc; margin-bottom: 0.5em;">Imagine you had a co-editor who...</h3>
+                    <ul>
+                        <li>Watched every frame and remembered everything</li>
+                        <li>Transcribed everything instantly <span class="small-text">(for free)</span></li>
+                        <li>Scored every moment for emotional delivery</li>
+                        <li>Found all the themes across all your interviews</li>
+                        <li>Proposed a narrative structure</li>
+                    </ul>
+                </div>
+                <p style="margin-top: 1.5em; font-size: 1.3em; text-align: center;">
+                    But <strong style="color: #f59e0b;">you</strong> had final approval on every single cut
+                </p>
+            </section>
+
+            <!-- Slide 3: Introducing Plotline -->
+            <section>
+                <h2>Introducing Plotline</h2>
+                <div class="two-column" style="margin-top: 1em;">
+                    <div>
+                        <p><span class="emoji">🎯</span> <strong>What:</strong> AI-assisted documentary editing toolkit</p>
+                        <p><span class="emoji">⚡</span> <strong>Speed:</strong> 85% less time on tedious work</p>
+                        <p><span class="emoji">🎬</span> <strong>Output:</strong> Frame-accurate EDL/FCPXML for DaVinci, Premiere, FCP</p>
+                        <p><span class="emoji">🔒</span> <strong>Privacy:</strong> Runs entirely local with Ollama</p>
+                    </div>
+                    <div class="screenshot">
+                        [Review Interface Screenshot]<br>
+                        <span class="small-text">plotline review --open</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: How It Works -->
+            <section>
+                <h2>How It Works</h2>
+                <div class="mermaid">
+flowchart LR
+    subgraph PLOTLINE
+        P1[Add Footage] --> P2[plotline run]
+        P2 --> P3[Review: Approve/Reject]
+        P3 --> P4[Export]
+    end
+    
+    style P2 fill:#3b82f6,color:#fff
+    style P3 fill:#f59e0b,color:#000
+                </div>
+                <div style="margin-top: 1em;">
+                    <div class="metric"><span class="emoji">📥</span> 1. Ingest footage</div>
+                    <div class="metric"><span class="emoji">🤖</span> 2. AI analyzes</div>
+                    <div class="metric"><span class="emoji">👤</span> 3. You review</div>
+                    <div class="metric"><span class="emoji">📤</span> 4. Export to NLE</div>
+                </div>
+            </section>
+
+            <!-- Slide 5: What the AI Measures -->
+            <section>
+                <h2>What the AI Measures</h2>
+                <p class="small-text" style="margin-bottom: 1em;">Delivery metrics humans can't consistently quantify</p>
+                <div class="two-column">
+                    <div>
+                        <div class="metric" style="display: block; margin-bottom: 0.75em;">
+                            <strong>⚡ Energy</strong><br>
+                            <span class="small-text">RMS amplitude — volume/intensity</span>
+                        </div>
+                        <div class="metric" style="display: block; margin-bottom: 0.75em;">
+                            <strong>🎵 Pitch Variation</strong><br>
+                            <span class="small-text">Vocal expressiveness (monotone = boring)</span>
+                        </div>
+                        <div class="metric" style="display: block; margin-bottom: 0.75em;">
+                            <strong>⏱️ Speech Rate</strong><br>
+                            <span class="small-text">Words per minute — pacing</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric" style="display: block; margin-bottom: 0.75em;">
+                            <strong>⏸️ Pause Patterns</strong><br>
+                            <span class="small-text">Natural breathing room between thoughts</span>
+                        </div>
+                        <div class="metric" style="display: block; margin-bottom: 0.75em;">
+                            <strong>🔊 Voice Quality</strong><br>
+                            <span class="small-text">Spectral features — brightness/texture</span>
+                        </div>
+                        <div class="stat-box" style="margin-top: 1em;">
+                            <div style="font-size: 0.9em; color: #94a3b8;">Composite Score</div>
+                            <div class="stat-value">0.0 – 1.0</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: Cross-Interview Synthesis -->
+            <section>
+                <h2>Cross-Interview Synthesis</h2>
+                <div class="mermaid">
+flowchart TB
+    I1[Interview A<br/>Themes: X, Y, Z]
+    I2[Interview B<br/>Themes: X, W]
+    I3[Interview C<br/>Themes: Y, Z, W]
+    
+    S[Synthesize<br/>Unify + Compare]
+    
+    O[Best Takes<br/>Highest scoring per topic]
+    
+    I1 --> S
+    I2 --> S
+    I3 --> S
+    S --> O
+    
+    style S fill:#3b82f6,color:#fff
+    style O fill:#22c55e,color:#fff
+                </div>
+                <div class="screenshot" style="margin-top: 1em;">
+                    [Compare Report Screenshot — Side-by-side takes]<br>
+                    <span class="small-text">plotline compare --open</span>
+                </div>
+            </section>
+
+            <!-- Slide 7: The Human Gatekeeper -->
+            <section class="center">
+                <h2>The Human Gatekeeper</h2>
+                <div class="philosophy-box" style="margin: 1em 0;">
+                    <p style="font-size: 1.5em; text-align: center; margin: 0;">
+                        The AI <span style="color: #3b82f6;">proposes</span>.<br>
+                        You <span style="color: #f59e0b;">decide</span>.
+                    </p>
+                </div>
+                <div style="margin-top: 1.5em;">
+                    <div class="metric"><kbd>A</kbd> Approve</div>
+                    <div class="metric"><kbd>X</kbd> Reject</div>
+                    <div class="metric"><kbd>F</kbd> Flag</div>
+                    <div class="metric">↕️ Drag to reorder</div>
+                    <div class="metric">📝 Add notes</div>
+                </div>
+                <p style="margin-top: 1.5em; color: #94a3b8;">
+                    Every segment passes through YOUR review before the final timeline
+                </p>
+            </section>
+
+            <!-- Slide 8: Creative Brief -->
+            <section>
+                <h2>Align with Your Vision</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Optional Creative Brief</h3>
+                        <ul>
+                            <li>Key messages you want to hit</li>
+                            <li>Target audience</li>
+                            <li>Tone and style</li>
+                            <li>Must-include topics</li>
+                            <li>Topics to avoid</li>
+                        </ul>
+                        <p style="margin-top: 1em; color: #3b82f6;">
+                            AI scores each segment on brief alignment
+                        </p>
+                    </div>
+                    <div>
+                        <div class="screenshot">
+                            [Coverage Matrix Screenshot]<br>
+                            <span class="small-text">plotline report coverage --open</span>
+                        </div>
+                        <div style="margin-top: 0.5em;">
+                            <span class="metric" style="font-size: 0.8em;">🟢 Strong</span>
+                            <span class="metric" style="font-size: 0.8em;">🟡 Weak</span>
+                            <span class="metric" style="font-size: 0.8em;">⚪ Gap</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 9: Case Study -->
+            <section>
+                <h2>Case Study: 12-Minute Documentary</h2>
+                <div class="two-column">
+                    <div class="stat-box">
+                        <div class="stat-label">Raw Footage</div>
+                        <div class="stat-value">4 hrs</div>
+                        <div class="stat-label" style="margin-top: 0.5em;">3 interviews</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Final Timeline</div>
+                        <div class="stat-value">12 min</div>
+                        <div class="stat-label" style="margin-top: 0.5em;">34 segments</div>
+                    </div>
+                </div>
+                <div class="two-column" style="margin-top: 1.5em;">
+                    <div class="stat-box">
+                        <div class="stat-label">Traditional Approach</div>
+                        <div class="stat-value" style="color: #ef4444;">2–3 days</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">With Plotline</div>
+                        <div class="stat-value">2 hrs</div>
+                        <div class="stat-label" style="margin-top: 0.5em;">40 min processing + 45 min review</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 10: Timeline Preview -->
+            <section>
+                <h2>What the Timeline Looks Like</h2>
+                <div class="screenshot" style="padding: 3em;">
+                    [DaVinci Resolve Screenshot]<br>
+                    <span class="small-text">Imported EDL with frame-accurate cuts</span>
+                </div>
+                <div style="margin-top: 1em;">
+                    <div class="metric">✓ Frame-accurate cuts</div>
+                    <div class="metric">✓ Handles for transitions</div>
+                    <div class="metric">✓ Theme keywords as markers</div>
+                    <div class="metric">✓ Ready for color, music, b-roll</div>
+                </div>
+            </section>
+
+            <!-- Slide 11: Under the Hood -->
+            <section>
+                <h2>Under the Hood</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Audio Analysis</h3>
+                        <p><strong>Whisper</strong><br>
+                        <span class="small-text">Word-level timestamps for frame-accurate cuts</span></p>
+                        <p><strong>Librosa</strong><br>
+                        <span class="small-text">Acoustic features: energy, pitch, rate, pauses</span></p>
+                    </div>
+                    <div>
+                        <h3>LLM Analysis (4 passes)</h3>
+                        <ol style="font-size: 0.9em;">
+                            <li>Per-interview themes</li>
+                            <li>Cross-interview synthesis</li>
+                            <li>Narrative arc construction</li>
+                            <li>Cultural sensitivity flagging <span class="small-text">(optional)</span></li>
+                        </ol>
+                    </div>
+                </div>
+                <div style="margin-top: 1.5em; text-align: center;">
+                    <div class="metric">🦙 Ollama (local)</div>
+                    <div class="metric">🤖 Claude (cloud)</div>
+                    <div class="metric">🌐 GPT-4 (cloud)</div>
+                </div>
+            </section>
+
+            <!-- Slide 12: Data Flow -->
+            <section>
+                <h2>Data Flow Architecture</h2>
+                <div class="mermaid">
+flowchart LR
+    V[Video] --> A[Audio]
+    A --> T[Transcript]
+    T --> D[Delivery]
+    D --> E[Enriched]
+    E --> TH[Themes]
+    TH --> S[Synthesis]
+    S --> ARC[Arc]
+    ARC --> EDL[EDL/FCPXML]
+    
+    style V fill:#64748b,color:#fff
+    style EDL fill:#22c55e,color:#fff
+                </div>
+                <p class="small-text" style="margin-top: 1em;">
+                    JSON at every stage — inspectable, debuggable, version-controllable
+                </p>
+            </section>
+
+            <!-- Slide 13: Extensibility -->
+            <section>
+                <h2>Extensibility</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Built for Flexibility</h3>
+                        <ul>
+                            <li>Python 3.11+, modular architecture</li>
+                            <li>Custom profiles (documentary, brand, commercial-doc)</li>
+                            <li>Pluggable LLM backends</li>
+                            <li>Adjustable delivery weights</li>
+                            <li>Multi-language support (auto-detected)</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Open Source</h3>
+                        <div class="code-block">
+github.com/mwarf/plotline
+                        </div>
+                        <p style="font-size: 0.9em; color: #94a3b8;">
+                            MIT License<br>
+                            Contributions welcome
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 14: Philosophy -->
+            <section class="center">
+                <h2>AI + Human = Better Than Either Alone</h2>
+                <div class="two-column" style="margin-top: 1.5em;">
+                    <div class="stat-box">
+                        <h3 style="color: #3b82f6;">AI Strengths</h3>
+                        <ul style="font-size: 0.9em;">
+                            <li>Scale — processes hours in minutes</li>
+                            <li>Consistency — same criteria every time</li>
+                            <li>Pattern recognition — finds themes you'd miss</li>
+                            <li>No fatigue — fresh at hour 10</li>
+                        </ul>
+                    </div>
+                    <div class="stat-box">
+                        <h3 style="color: #f59e0b;">Human Strengths</h3>
+                        <ul style="font-size: 0.9em;">
+                            <li>Context — understands the bigger story</li>
+                            <li>Taste — knows what feels right</li>
+                            <li>Editorial judgment — makes the call</li>
+                            <li>Creative vision — sees the final film</li>
+                        </ul>
+                    </div>
+                </div>
+                <p style="margin-top: 1.5em; font-size: 1.1em;">
+                    Plotline: AI does the tedious <span style="color: #3b82f6;">80%</span>,<br>
+                    human does the creative <span style="color: #f59e0b;">20%</span>
+                </p>
+            </section>
+
+            <!-- Slide 15: What's Next -->
+            <section>
+                <h2>What's Next</h2>
+                <div class="two-column">
+                    <div>
+                        <h3>Available Now</h3>
+                        <ul>
+                            <li>✅ Multi-language support (auto-detected)</li>
+                            <li>✅ Speaker diarization</li>
+                            <li>✅ Smart handles (auto-reduce on tight pauses)</li>
+                            <li>✅ Chapter markers in FCPXML</li>
+                            <li>✅ Alternates export</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Roadmap</h3>
+                        <ul>
+                            <li>🔮 Visual analysis (facial expressions)</li>
+                            <li>🔮 Music/sound design suggestions</li>
+                            <li>🔮 Real-time collaborative review</li>
+                            <li>🔮 B-roll matching</li>
+                            <li>🔮 Export to more NLEs</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 16: Get Started -->
+            <section class="center">
+                <h2>Get Started in 5 Minutes</h2>
+                <div class="code-block" style="text-align: left; margin: 1.5em auto; max-width: 600px;">
+<span style="color: #64748b;"># Install</span>
+pip install plotline
+
+<span style="color: #64748b;"># Create project</span>
+plotline init my-doc --profile documentary
+cd my-doc
+
+<span style="color: #64748b;"># Add footage</span>
+plotline add ~/Videos/interview1.mov
+
+<span style="color: #64748b;"># Run pipeline</span>
+plotline run
+
+<span style="color: #64748b;"># Review selections</span>
+plotline review --open
+
+<span style="color: #64748b;"># Export timeline</span>
+plotline export --format edl
+                </div>
+                <div style="margin-top: 1.5em;">
+                    <p><strong>Docs:</strong> <a href="https://github.com/mwarf/plotline">github.com/mwarf/plotline</a></p>
+                    <p><strong>Questions:</strong> <a href="https://github.com/mwarf/plotline/discussions">GitHub Discussions</a></p>
+                </div>
+            </section>
+
+            <!-- Final Slide: Thank You -->
+            <section class="center">
+                <h1>Thank You</h1>
+                <p style="font-size: 1.2em; margin-top: 1em;">
+                    <strong>Plotline</strong> — AI-Assisted Documentary Editing
+                </p>
+                <p style="color: #94a3b8; margin-top: 2em;">
+                    The AI proposes.<br>
+                    <span style="color: #f59e0b;">You decide.</span>
+                </p>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.js"></script>
+    
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#1e293b',
+                primaryColor: '#3b82f6',
+                primaryTextColor: '#f8fafc',
+                primaryBorderColor: '#475569',
+                lineColor: '#64748b',
+                secondaryColor: '#1e293b',
+                tertiaryColor: '#334155'
+            }
+        });
+        
+        // Initialize Reveal
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            showSlideNumber: 'speaker',
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            width: 1280,
+            height: 720,
+            margin: 0.1,
+            pdfSeparateFragments: false
+        });
+        
+        // Render Mermaid diagrams when slides are ready
+        Reveal.on('ready', event => {
+            document.querySelectorAll('.mermaid').forEach(el => {
+                mermaid.run({ nodes: [el] });
+            });
+        });
+    </script>
+</body>
+</html>
