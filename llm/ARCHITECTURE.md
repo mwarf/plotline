@@ -15,7 +15,7 @@ VIDEO FILES
     ▼
 ┌─────────────┐     ┌──────────────────┐
 │ 2. Transcribe│────▶│ transcript.json  │  (per interview)
-│ (mlx-whisper)│     └──────────────────┘
+│   (Whisper)  │     └──────────────────┘
 └─────────────┘
     │
     ▼

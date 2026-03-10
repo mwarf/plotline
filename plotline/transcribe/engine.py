@@ -1,9 +1,8 @@
 """
 plotline.transcribe.engine - Whisper transcription engine.
 
-Uses mlx-whisper (primary) for Apple Silicon or falls back to
-other Whisper backends. Produces segment-level transcripts with
-word-level timestamps.
+Uses faster-whisper (cross-platform default) or mlx-whisper (Apple Silicon optional).
+Produces segment-level transcripts with word-level timestamps.
 """
 
 from __future__ import annotations

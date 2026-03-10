@@ -91,7 +91,7 @@ plotline/
 │   │   └── audio.py         # FFmpeg audio extraction
 │   ├── transcribe/
 │   │   ├── __init__.py
-│   │   ├── engine.py        # Whisper transcription (mlx or fallback)
+│   │   ├── engine.py        # Whisper transcription (faster-whisper or mlx)
 │   │   └── segments.py      # Segment boundary post-processing
 │   ├── analyze/
 │   │   ├── __init__.py
