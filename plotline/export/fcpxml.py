@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
 
 
@@ -96,10 +95,9 @@ def path_to_file_url(path: Path) -> str:
         path: Filesystem path
 
     Returns:
-        file:// URL string
+        file:// URL string (cross-platform, handles Windows drive letters)
     """
-    absolute = path.resolve()
-    return f"file://{quote(str(absolute))}"
+    return path.resolve().as_uri()
 
 
 def generate_fcpxml(

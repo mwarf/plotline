@@ -17,7 +17,12 @@ sudo apt install ffmpeg
 ```
 
 **Windows:**
-Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+```powershell
+winget install ffmpeg
+```
+Or with Chocolatey: `choco install ffmpeg`
+
+After installing, **restart your terminal** so FFmpeg is found in PATH.
 
 Verify: `ffmpeg -version`
 
@@ -44,13 +49,19 @@ This checks all dependencies and reports any issues.
 
 **Rough estimates per hour of footage:**
 
-| Hardware | Time |
-|----------|------|
-| Apple Silicon (M1/M2/M3) | 5-10 min |
-| GPU (NVIDIA RTX 3080+) | 10-15 min |
-| CPU only | 30-60 min |
+| Hardware | Backend | Time |
+|----------|---------|------|
+| Apple Silicon (M1/M2/M3) | mlx-whisper | 5-10 min |
+| NVIDIA GPU (RTX 3080+) | faster-whisper (CUDA) | 8-15 min |
+| CPU only | faster-whisper | 30-60 min |
 
 Delivery analysis and LLM passes add another 5-10 minutes per hour.
+
+**On Windows/Linux**, Plotline uses `faster-whisper` automatically. To enable GPU acceleration install the CUDA version of PyTorch before running:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+```
 
 ### Can I resume an interrupted pipeline?
 

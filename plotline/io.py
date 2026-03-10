@@ -54,7 +54,7 @@ def write_json(path: Path, data: dict[str, Any], indent: int = 2) -> None:
         except Exception:
             tmp_path.unlink(missing_ok=True)
             raise
-    tmp_path.rename(path)
+    tmp_path.replace(path)
 
 
 def read_text(path: Path) -> str:
@@ -91,4 +91,4 @@ def write_text(path: Path, content: str) -> None:
         except Exception:
             tmp_path.unlink(missing_ok=True)
             raise
-    tmp_path.rename(path)
+    tmp_path.replace(path)

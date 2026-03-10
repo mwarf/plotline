@@ -9,7 +9,7 @@ Get from raw interviews to an editable DaVinci Resolve timeline in 5 minutes.
 Before you start, ensure you have:
 
 - **Python 3.11+** — Check with `python --version`
-- **FFmpeg** — Install with `brew install ffmpeg` (macOS) or `sudo apt install ffmpeg` (Ubuntu)
+- **FFmpeg** — Install with `brew install ffmpeg` (macOS), `sudo apt install ffmpeg` (Ubuntu/Debian), or `winget install ffmpeg` (Windows)
 - **Ollama** — Download from [ollama.ai](https://ollama.ai), then `ollama pull llama3.1:8b`
 
 Verify everything works:
@@ -148,7 +148,13 @@ brew install ffmpeg
 
 # Ubuntu/Debian
 sudo apt install ffmpeg
+
+# Windows
+winget install ffmpeg
+# Or with Chocolatey: choco install ffmpeg
 ```
+
+On Windows, restart your terminal after installing so FFmpeg is found in PATH.
 
 ### "Ollama not running"
 

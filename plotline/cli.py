@@ -477,7 +477,13 @@ def manage_speakers(
             console.print("[yellow]No speakers.yaml found. Run 'plotline diarize' first.[/yellow]")
             raise typer.Exit(1)
 
-        editor = os.environ.get("EDITOR", "nano")
+        import sys
+
+        if sys.platform == "win32":
+            default_editor = "notepad"
+        else:
+            default_editor = "nano"
+        editor = os.environ.get("EDITOR", os.environ.get("VISUAL", default_editor))
         subprocess.run([editor, str(speakers_file)])
         console.print(f"[green]✓[/green] Edited {speakers_file}")
         return
@@ -968,7 +974,7 @@ def export_timeline(
         else:
             output_path = project_dir / "export" / f"{project_name}_alternates{ext}"
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(content)
+        output_path.write_text(content, encoding="utf-8")
         console.print(f"[green]✓[/green] Exported alternates to {output_path}")
         console.print(f"[dim]  Format: EDL, Handle: {handle} frames[/dim]")
         return
@@ -1010,7 +1016,7 @@ def export_timeline(
         output_path = project_dir / "export" / f"{project_name}{ext}"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(content)
+    output_path.write_text(content, encoding="utf-8")
 
     console.print(f"[green]✓[/green] Exported to {output_path}")
     console.print(f"[dim]  Format: {format.upper()}, Handle: {handle} frames[/dim]")
@@ -2190,7 +2196,7 @@ def validate_data(
                 try:
                     import json
 
-                    with open(tf) as f:
+                    with open(tf, encoding="utf-8") as f:
                         data = json.load(f)
                     seg_count = len(data.get("segments", []))
                     console.print(f"[green]✓[/green] transcript {tf.name}: {seg_count} segments")
@@ -2206,7 +2212,7 @@ def validate_data(
                 try:
                     import json
 
-                    with open(sf) as f:
+                    with open(sf, encoding="utf-8") as f:
                         data = json.load(f)
                     seg_count = len(data.get("segments", []))
                     console.print(f"[green]✓[/green] segments {sf.name}: {seg_count} segments")
@@ -2286,7 +2292,7 @@ def diagnose_project(
     if data_dir.exists():
         for json_file in data_dir.rglob("*.json"):
             try:
-                with open(json_file) as f:
+                with open(json_file, encoding="utf-8") as f:
                     json.load(f)
             except json.JSONDecodeError as e:
                 issues.append(
@@ -2311,7 +2317,7 @@ def diagnose_project(
     if themes_dir.exists():
         for theme_file in themes_dir.glob("*.json"):
             try:
-                with open(theme_file) as f:
+                with open(theme_file, encoding="utf-8") as f:
                     data = json.load(f)
                 if not data.get("themes"):
                     issues.append(
@@ -2328,7 +2334,7 @@ def diagnose_project(
     synthesis_path = project_dir / "data" / "synthesis.json"
     if synthesis_path.exists():
         try:
-            with open(synthesis_path) as f:
+            with open(synthesis_path, encoding="utf-8") as f:
                 data = json.load(f)
             if not data.get("unified_themes") and not data.get("best_takes"):
                 issues.append(

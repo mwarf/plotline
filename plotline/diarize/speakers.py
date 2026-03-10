@@ -206,7 +206,7 @@ def load_speaker_config(project_path: Path) -> SpeakerConfig:
     if not config_path.exists():
         return SpeakerConfig()
 
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
 
     return SpeakerConfig.from_dict(data)
@@ -219,7 +219,7 @@ def save_speaker_config(config: SpeakerConfig, path: Path) -> None:
         config: SpeakerConfig instance
         path: Path to save to
     """
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         yaml.dump(config.to_dict(), f, default_flow_style=False, sort_keys=False)
 
 

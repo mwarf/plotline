@@ -4,7 +4,17 @@ All notable changes to Plotline will be documented in this file.
 
 ## [0.3.7] - 2026-03-09
 
-Export pipeline and report template correctness fixes.
+Export pipeline and report template correctness fixes, plus full Windows/Linux PC compatibility.
+
+### Changed
+
+#### Cross-Platform Compatibility
+
+- **faster-whisper is now the default Whisper backend** on all platforms. mlx-whisper has moved to an optional macOS extra: `pip install plotline[macos]`
+- **Platform-specific backend auto-selection**: `mlx` on macOS Apple Silicon, `faster-whisper` on Linux and Windows
+- **Windows editor fallback**: the config editor now falls back to `notepad` on Windows (previously only `nano` was tried as a fallback)
+- **FFmpeg error messages** now include Windows install instructions (`winget install ffmpeg` / `choco install ffmpeg`)
+- **Documentation**: added Windows/Linux setup instructions across `README.md`, `getting-started.md`, and `FAQ.md`
 
 ### Fixed
 

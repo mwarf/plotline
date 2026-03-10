@@ -186,8 +186,8 @@ def extract_all_interviews(
                 console=console,
             )
 
-            interview["audio_16k_path"] = str(audio_16k.relative_to(project_path))
-            interview["audio_full_path"] = str(audio_full.relative_to(project_path))
+            interview["audio_16k_path"] = audio_16k.relative_to(project_path).as_posix()
+            interview["audio_full_path"] = audio_full.relative_to(project_path).as_posix()
             interview["stages"]["extracted"] = True
 
             table.add_row(

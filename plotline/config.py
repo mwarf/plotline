@@ -8,6 +8,7 @@ defaults, and validating all parameters.
 from __future__ import annotations
 
 import copy
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +51,7 @@ class PlotlineConfig(BaseModel):
     llm_backend: str = "ollama"
     llm_model: str = "llama3.1:70b-instruct-q4_K_M"
 
-    whisper_backend: str = "mlx"
+    whisper_backend: str = "faster" if sys.platform != "darwin" else "mlx"
     whisper_model: str = "medium"
     whisper_language: str | None = None
 
@@ -154,7 +155,7 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> dict[str, Any]:
     if profiles_dir and profiles_dir.exists():
         profile_file = profiles_dir / f"{name}.yaml"
         if profile_file.exists():
-            with open(profile_file) as f:
+            with open(profile_file, encoding="utf-8") as f:
                 return yaml.safe_load(f)
     if name in BUILTIN_PROFILES:
         return copy.deepcopy(BUILTIN_PROFILES[name])
@@ -179,7 +180,7 @@ def load_config(project_dir: Path) -> PlotlineConfig:
     if not config_file.exists():
         raise FileNotFoundError(f"No plotline.yaml found in {project_dir}")
 
-    with open(config_file) as f:
+    with open(config_file, encoding="utf-8") as f:
         raw_config = yaml.safe_load(f) or {}
 
     profile_name = raw_config.get("project_profile", "documentary")
@@ -198,12 +199,13 @@ def load_config(project_dir: Path) -> PlotlineConfig:
 
 def create_default_config(project_name: str, profile: str = "documentary") -> dict[str, Any]:
     """Create a default config for a new project."""
+    whisper_backend = "mlx" if sys.platform == "darwin" else "faster"
     defaults = {
         "project_name": project_name,
         "project_profile": profile,
         "privacy_mode": "local",
         "llm_backend": "ollama",
-        "whisper_backend": "mlx",
+        "whisper_backend": whisper_backend,
         "whisper_model": "medium",
     }
     if profile in BUILTIN_PROFILES:
@@ -214,5 +216,5 @@ def create_default_config(project_name: str, profile: str = "documentary") -> di
 def write_config(config: dict[str, Any], path: Path) -> None:
     """Write configuration to a YAML file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)

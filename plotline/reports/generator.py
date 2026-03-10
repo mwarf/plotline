@@ -68,4 +68,4 @@ class ReportGenerator:
         Args:
             path: Path to HTML file
         """
-        webbrowser.open(f"file://{path.resolve()}")
+        webbrowser.open(path.resolve().as_uri())

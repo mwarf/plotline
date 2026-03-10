@@ -559,11 +559,14 @@ Markdown briefs always generate sequential IDs (`msg_001`, etc.).
 If your brief contains special characters, ensure UTF-8 encoding:
 
 ```bash
-# Check encoding
+# macOS / Linux — check and convert encoding
 file brief.md
-
-# Convert if needed
 iconv -f ISO-8859-1 -t UTF-8 brief.md > brief_utf8.md
+
+# Windows (PowerShell) — convert encoding
+Get-Content brief.md -Encoding Default | Set-Content brief_utf8.md -Encoding UTF8
+# Or with Python (cross-platform):
+python -c "open('brief_utf8.md','w',encoding='utf-8').write(open('brief.md',encoding='latin-1').read())"
 ```
 
 ---

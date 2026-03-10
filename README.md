@@ -54,7 +54,8 @@ See [Workflow Diagrams](docs/workflow-diagram.md) for detailed comparisons, AI v
 # Clone and install
 git clone https://github.com/your-org/plotline.git
 cd plotline
-pip install -e .
+pip install -e .                # All platforms (uses faster-whisper)
+pip install -e ".[macos]"       # macOS Apple Silicon — adds mlx-whisper for faster transcription
 ```
 
 ### Requirements
@@ -68,6 +69,10 @@ pip install -e .
 
   # Ubuntu/Debian
   sudo apt install ffmpeg
+
+  # Windows
+  winget install ffmpeg
+  # Or with Chocolatey: choco install ffmpeg
   ```
 
 - **Ollama** (for local LLM) — [Install Ollama](https://ollama.ai)
@@ -171,7 +176,7 @@ plotline extract
 
 ### 2. Transcription
 
-Transcribes audio using mlx-whisper (Apple Silicon) or faster-whisper. Language is auto-detected by Whisper and carried through the pipeline.
+Transcribes audio using faster-whisper (default, all platforms) or mlx-whisper (macOS Apple Silicon — install with `pip install plotline[macos]`). Language is auto-detected by Whisper and carried through the pipeline.
 
 ```bash
 # Auto-detect language (recommended)
@@ -372,7 +377,9 @@ llm_model: llama3.1:8b
 privacy_mode: local
 
 # Whisper settings
-whisper_backend: mlx
+# whisper_backend auto-selects: 'mlx' on macOS Apple Silicon, 'faster-whisper' elsewhere
+# Override explicitly if needed:
+# whisper_backend: faster-whisper
 whisper_model: medium
 # whisper_language: es  # Optional — auto-detected if omitted
 
@@ -614,11 +621,24 @@ my-project/
 
 ### FFmpeg not found
 
+Install FFmpeg for your platform:
+
 ```bash
-# Install FFmpeg
+# macOS
 brew install ffmpeg
 
-# Verify
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# Windows
+winget install ffmpeg
+# Or with Chocolatey: choco install ffmpeg
+```
+
+On Windows, restart your terminal after installing so FFmpeg is found in PATH.
+
+```bash
+# Verify (all platforms)
 ffmpeg -version
 ```
 

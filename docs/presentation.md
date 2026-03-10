@@ -231,8 +231,11 @@ MIT License — Contributions welcome
 # Get Started in 5 Minutes
 
 ```bash
-# Install
+# Install (all platforms)
 pip install plotline
+
+# macOS Apple Silicon — add mlx-whisper for faster transcription
+pip install plotline[macos]
 
 # Create project
 plotline init my-doc --profile documentary
