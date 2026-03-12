@@ -10,9 +10,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from plotline.diarize.align import (
+    MAX_GAP_SECONDS,
     assign_speakers_to_transcript,
     assign_speakers_to_words,
     compute_segment_speaker,
+    find_speaker_for_interval,
     find_speaker_for_time,
 )
 from plotline.diarize.engine import get_device, get_hf_token
@@ -107,12 +109,97 @@ class TestFindSpeakerForTime:
         result = find_speaker_for_time(2.5, [])
         assert result is None
 
-    def test_longest_overlap_wins(self) -> None:
+    def test_deeper_interior_wins_over_shallow(self) -> None:
+        # Point at 9.0: depth inside SPEAKER_00 (0-10) is min(9, 1)=1.0,
+        # depth inside SPEAKER_01 (8-15) is min(1, 6)=1.0 — tie broken by
+        # duration: SPEAKER_00 is 10s vs SPEAKER_01 is 7s → SPEAKER_00 wins.
         segments = [
             {"start": 0.0, "end": 10.0, "speaker": "SPEAKER_00"},
             {"start": 8.0, "end": 15.0, "speaker": "SPEAKER_01"},
         ]
         result = find_speaker_for_time(9.0, segments)
+        assert result == "SPEAKER_00"
+
+    def test_deeper_interior_wins_clearly(self) -> None:
+        # Point at 3.0: depth inside SPEAKER_00 (0-10) is min(3, 7)=3.0;
+        # depth inside SPEAKER_01 (2-4) is min(1, 1)=1.0 → SPEAKER_00 wins.
+        segments = [
+            {"start": 0.0, "end": 10.0, "speaker": "SPEAKER_00"},
+            {"start": 2.0, "end": 4.0, "speaker": "SPEAKER_01"},
+        ]
+        result = find_speaker_for_time(3.0, segments)
+        assert result == "SPEAKER_00"
+
+    def test_tie_broken_by_longer_segment(self) -> None:
+        # Point exactly at midpoint of both segments — same depth.
+        # SPEAKER_00 segment is 10s, SPEAKER_01 is 6s → SPEAKER_00 wins.
+        segments = [
+            {"start": 0.0, "end": 10.0, "speaker": "SPEAKER_00"},  # depth 5 at t=5
+            {"start": 2.0, "end": 8.0, "speaker": "SPEAKER_01"},  # depth 3 at t=5
+        ]
+        result = find_speaker_for_time(5.0, segments)
+        assert result == "SPEAKER_00"
+
+    def test_identical_segments_different_speakers_stable(self) -> None:
+        # Both segments are identical (pyannote overlapping speech output).
+        # Longer-segment tiebreaker falls back to first-wins when duration is
+        # also equal — we just want a deterministic, non-crashing result.
+        segments = [
+            {"start": 0.0, "end": 5.0, "speaker": "SPEAKER_00"},
+            {"start": 0.0, "end": 5.0, "speaker": "SPEAKER_01"},
+        ]
+        result = find_speaker_for_time(2.5, segments)
+        assert result in ("SPEAKER_00", "SPEAKER_01")
+
+
+class TestFindSpeakerForInterval:
+    def test_word_fully_inside_one_segment(self) -> None:
+        segments = _make_diarization_segments()
+        result = find_speaker_for_interval(1.0, 2.0, segments)
+        assert result == "SPEAKER_00"
+
+    def test_word_fully_inside_second_segment(self) -> None:
+        segments = _make_diarization_segments()
+        result = find_speaker_for_interval(6.0, 7.0, segments)
+        assert result == "SPEAKER_01"
+
+    def test_word_spanning_boundary_majority_overlap(self) -> None:
+        # Word from 4.0 to 6.0 spans the 5.0 boundary.
+        # Overlap with SPEAKER_00 (0-5): 1.0s; overlap with SPEAKER_01 (5-10): 1.0s — equal,
+        # tiebreaker: both segments same length (5s) → first in list wins (SPEAKER_00).
+        segments = _make_diarization_segments()
+        result = find_speaker_for_interval(4.0, 6.0, segments)
+        assert result in ("SPEAKER_00", "SPEAKER_01")
+
+    def test_word_mostly_in_first_segment_wins(self) -> None:
+        # Word from 3.0 to 5.5: 2.0s in SPEAKER_00 (0-5), 0.5s in SPEAKER_01 (5-10)
+        segments = _make_diarization_segments()
+        result = find_speaker_for_interval(3.0, 5.5, segments)
+        assert result == "SPEAKER_00"
+
+    def test_word_mostly_in_second_segment_wins(self) -> None:
+        # Word from 4.5 to 7.0: 0.5s in SPEAKER_00 (0-5), 2.0s in SPEAKER_01 (5-10)
+        segments = _make_diarization_segments()
+        result = find_speaker_for_interval(4.5, 7.0, segments)
+        assert result == "SPEAKER_01"
+
+    def test_no_overlap_returns_none(self) -> None:
+        segments = _make_diarization_segments()
+        result = find_speaker_for_interval(20.0, 21.0, segments)
+        assert result is None
+
+    def test_empty_segments_returns_none(self) -> None:
+        result = find_speaker_for_interval(0.0, 1.0, [])
+        assert result is None
+
+    def test_tie_broken_by_longer_segment(self) -> None:
+        # Equal overlap but first segment is longer → first wins.
+        segments = [
+            {"start": 0.0, "end": 10.0, "speaker": "SPEAKER_00"},  # 10s long
+            {"start": 5.0, "end": 8.0, "speaker": "SPEAKER_01"},  # 3s long
+        ]
+        # Word from 5.0 to 6.0: 1s overlap with each segment.
+        result = find_speaker_for_interval(5.0, 6.0, segments)
         assert result == "SPEAKER_00"
 
 
@@ -128,11 +215,47 @@ class TestAssignSpeakersToWords:
         assert result[2]["speaker"] == "SPEAKER_01"
         assert result[3]["speaker"] == "SPEAKER_01"
 
-    def test_gap_assigned_to_nearest_speaker(self) -> None:
+    def test_gap_within_threshold_assigned_to_nearest(self) -> None:
+        # 17.25s is 2.25s past the end of the last segment (15.0) — within MAX_GAP_SECONDS
         words = [{"word": "gap", "start": 17.0, "end": 17.5}]
         segments = _make_diarization_segments()
         result = assign_speakers_to_words(words, segments)
+        assert result[0]["speaker"] == "SPEAKER_00"
 
+    def test_gap_beyond_threshold_is_none(self) -> None:
+        # Word at 20.0s is 5s past the last segment end (15.0) — beyond MAX_GAP_SECONDS (3.0)
+        words = [{"word": "test", "start": 20.0, "end": 20.5}]
+        segments = _make_diarization_segments()
+        result = assign_speakers_to_words(words, segments)
+        assert result[0]["speaker"] is None
+
+    def test_gap_exactly_at_threshold_is_assigned(self) -> None:
+        # Distance == MAX_GAP_SECONDS should still be assigned (<=)
+        segments = [{"start": 0.0, "end": 5.0, "speaker": "SPEAKER_00"}]
+        gap_mid = 5.0 + MAX_GAP_SECONDS  # exactly at the threshold
+        words = [{"word": "edge", "start": gap_mid - 0.1, "end": gap_mid + 0.1}]
+        result = assign_speakers_to_words(words, segments)
+        assert result[0]["speaker"] == "SPEAKER_00"
+
+    def test_gap_just_over_threshold_is_none(self) -> None:
+        segments = [{"start": 0.0, "end": 5.0, "speaker": "SPEAKER_00"}]
+        gap_mid = 5.0 + MAX_GAP_SECONDS + 0.1  # just beyond the threshold
+        words = [{"word": "far", "start": gap_mid - 0.1, "end": gap_mid + 0.1}]
+        result = assign_speakers_to_words(words, segments)
+        assert result[0]["speaker"] is None
+
+    def test_custom_max_gap_respected(self) -> None:
+        # 17.25s midpoint is 2.25s past end (15.0); with max_gap=2.0 it should be None
+        words = [{"word": "gap", "start": 17.0, "end": 17.5}]
+        segments = _make_diarization_segments()
+        result = assign_speakers_to_words(words, segments, max_gap_seconds=2.0)
+        assert result[0]["speaker"] is None
+
+    def test_word_spanning_boundary_uses_interval_overlap(self) -> None:
+        # Word from 3.0 to 5.5: 2s in SPEAKER_00, 0.5s in SPEAKER_01 → SPEAKER_00
+        words = [{"word": "spanning", "start": 3.0, "end": 5.5}]
+        segments = _make_diarization_segments()
+        result = assign_speakers_to_words(words, segments)
         assert result[0]["speaker"] == "SPEAKER_00"
 
     def test_empty_diarization_returns_unchanged(self) -> None:
@@ -161,11 +284,25 @@ class TestAssignSpeakersToWords:
 
 
 class TestComputeSegmentSpeaker:
-    def test_majority_vote(self) -> None:
+    def test_duration_weighted_wins_over_word_count(self) -> None:
+        # SPEAKER_01 has only 1 word but it is very long (10s).
+        # SPEAKER_00 has 3 words but they are very short (0.1s each).
+        # Duration-weighted: SPEAKER_01 has 10s vs SPEAKER_00 has 0.3s → SPEAKER_01 wins.
         words = [
-            {"word": "a", "speaker": "SPEAKER_00"},
-            {"word": "b", "speaker": "SPEAKER_00"},
-            {"word": "c", "speaker": "SPEAKER_01"},
+            {"word": "short", "start": 0.0, "end": 0.1, "speaker": "SPEAKER_00"},
+            {"word": "short", "start": 0.2, "end": 0.3, "speaker": "SPEAKER_00"},
+            {"word": "short", "start": 0.4, "end": 0.5, "speaker": "SPEAKER_00"},
+            {"word": "long", "start": 1.0, "end": 11.0, "speaker": "SPEAKER_01"},
+        ]
+        result = compute_segment_speaker(words)
+        assert result == "SPEAKER_01"
+
+    def test_duration_weighted_majority(self) -> None:
+        # SPEAKER_00 has more total time (2s) than SPEAKER_01 (1s)
+        words = [
+            {"word": "a", "start": 0.0, "end": 1.0, "speaker": "SPEAKER_00"},
+            {"word": "b", "start": 1.0, "end": 2.0, "speaker": "SPEAKER_00"},
+            {"word": "c", "start": 2.0, "end": 3.0, "speaker": "SPEAKER_01"},
         ]
         result = compute_segment_speaker(words)
         assert result == "SPEAKER_00"
@@ -182,10 +319,29 @@ class TestComputeSegmentSpeaker:
         result = compute_segment_speaker(words)
         assert result is None
 
+    def test_none_speaker_field_ignored(self) -> None:
+        # Words with speaker=None should be ignored; only SPEAKER_01 has a valid speaker
+        words = [
+            {"word": "a", "start": 0.0, "end": 1.0, "speaker": None},
+            {"word": "b", "start": 1.0, "end": 2.0, "speaker": "SPEAKER_01"},
+        ]
+        result = compute_segment_speaker(words)
+        assert result == "SPEAKER_01"
+
     def test_single_speaker(self) -> None:
         words = [
-            {"word": "a", "speaker": "SPEAKER_01"},
-            {"word": "b", "speaker": "SPEAKER_01"},
+            {"word": "a", "start": 0.0, "end": 1.0, "speaker": "SPEAKER_01"},
+            {"word": "b", "start": 1.0, "end": 2.0, "speaker": "SPEAKER_01"},
+        ]
+        result = compute_segment_speaker(words)
+        assert result == "SPEAKER_01"
+
+    def test_words_without_timestamps_treated_as_zero_duration(self) -> None:
+        # Words missing start/end still contribute 0 duration and should not crash.
+        # Only SPEAKER_01 has real duration → wins.
+        words = [
+            {"word": "notimestamp", "speaker": "SPEAKER_00"},
+            {"word": "b", "start": 0.0, "end": 1.0, "speaker": "SPEAKER_01"},
         ]
         result = compute_segment_speaker(words)
         assert result == "SPEAKER_01"
@@ -232,6 +388,36 @@ class TestAssignSpeakersToTranscript:
         result = assign_speakers_to_transcript(transcript, diarization)
 
         assert result["segments"] == []
+
+    def test_words_in_long_gap_get_none_speaker(self) -> None:
+        # seg_002 words are at 40s, well beyond any diarization segment (0-15s)
+        transcript = {
+            "interview_id": "test_gap",
+            "segments": [
+                {
+                    "segment_id": "seg_001",
+                    "start": 0.0,
+                    "end": 1.0,
+                    "text": "Hello",
+                    "words": [{"word": "Hello", "start": 0.0, "end": 0.5}],
+                },
+                {
+                    "segment_id": "seg_002",
+                    "start": 40.0,
+                    "end": 41.0,
+                    "text": "faraway",
+                    "words": [{"word": "faraway", "start": 40.0, "end": 40.5}],
+                },
+            ],
+        }
+        diarization = _make_diarization()
+        result = assign_speakers_to_transcript(transcript, diarization)
+
+        # seg_001 should be assigned normally
+        assert result["segments"][0]["speaker"] == "SPEAKER_00"
+        # seg_002 words are 25s past the last diarization segment → None
+        assert result["segments"][1]["words"][0]["speaker"] is None
+        assert result["segments"][1]["speaker"] is None
 
 
 class TestSpeakerInfo:
