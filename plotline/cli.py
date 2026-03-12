@@ -957,6 +957,11 @@ def export_timeline(
         raise typer.Exit(1)
 
     if alternates:
+        if format == "fcpxml":
+            console.print(
+                "[yellow]Warning: --alternates only supports EDL format. "
+                "Using EDL regardless of --format flag.[/yellow]"
+            )
         from plotline.export.edl import generate_alternates_edl_from_project
 
         content = generate_alternates_edl_from_project(

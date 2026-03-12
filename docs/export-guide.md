@@ -58,6 +58,7 @@ Apple's native interchange format for Final Cut Pro.
 | User Notes | Comment | Marker Note |
 | Smart Handles | ✓ | ✓ |
 | Drop-frame timecode | ✓ | ✓ |
+| Alternates Export | ✓ | ✗ |
 
 ---
 

@@ -1,7 +1,7 @@
 """
 plotline.export.fcpxml - FCPXML 1.11 generator.
 
-Generates Final Cut Pro XML files for import into DaVinci Resolve
+Generates Final Cut Pro XML files for import into Final Cut Pro
 with markers, keywords, and metadata.
 """
 
@@ -175,10 +175,20 @@ def generate_fcpxml(
         src_end = sel.get("end", 0)
 
         default_handle_sec = handle_frames / interview_fps
-        pause_before = sel.get("pause_before_sec", 0)
-        pause_after = sel.get("pause_after_sec", 0)
-        smart_handle_in = min(default_handle_sec, pause_before * 0.8) if pause_before > 0 else 0.0
-        smart_handle_out = min(default_handle_sec, pause_after * 0.8) if pause_after > 0 else 0.0
+        pause_before = sel.get("pause_before_sec")
+        pause_after = sel.get("pause_after_sec")
+        if pause_before is not None and pause_before > 0:
+            smart_handle_in = min(default_handle_sec, pause_before * 0.8)
+        elif pause_before is None:
+            smart_handle_in = default_handle_sec
+        else:
+            smart_handle_in = 0.0
+        if pause_after is not None and pause_after > 0:
+            smart_handle_out = min(default_handle_sec, pause_after * 0.8)
+        elif pause_after is None:
+            smart_handle_out = default_handle_sec
+        else:
+            smart_handle_out = 0.0
         padded_start = max(0, src_start - smart_handle_in)
         interview_duration = interview.get("duration_seconds")
         padded_end = src_end + smart_handle_out
@@ -218,13 +228,15 @@ def generate_fcpxml(
 
     total_duration_tc = seconds_to_fcpxml_time(cumulative_offset, fps)
 
+    tc_format = "DF" if abs(fps - 29.97) < 0.01 else "NDF"
+
     lines.extend(
         [
             "    </resources>",
             "    <library>",
             '        <event name="Plotline Selects">',
             f'            <project name="{_xa(project_name)}">',
-            '                <sequence format="r1" tcStart="0s" tcFormat="NDF" '
+            f'                <sequence format="r1" tcStart="0s" tcFormat="{tc_format}" '
             f'duration="{total_duration_tc}">',
             "                    <spine>",
         ]
@@ -375,7 +387,14 @@ def generate_fcpxml_from_project(
 
     interviews = {}
     for interview in manifest.get("interviews", []):
-        interviews[interview["id"]] = interview
+        interview_copy = dict(interview)
+        source_file = interview_copy.get("source_file", "")
+        if source_file:
+            source_path = Path(source_file)
+            if not source_path.is_absolute():
+                source_path = project_path / source_file
+            interview_copy["source_file"] = str(source_path)
+        interviews[interview["id"]] = interview_copy
 
     return generate_fcpxml(
         project_name=manifest.get("project_name", "plotline"),

@@ -538,7 +538,7 @@ class TestEDLCompliance:
         assert "00:01:00:00" in edl  # 60 seconds = 1 minute exactly
 
     def test_duration_no_clamp_without_duration_seconds(self):
-        """When duration_seconds is absent, handle extends freely."""
+        """When duration_seconds is absent, handle extends freely with default handles."""
         selections = [
             {"segment_id": "seg-1", "interview_id": "int-001", "start": 55.0, "end": 60.0},
         ]
@@ -547,15 +547,17 @@ class TestEDLCompliance:
                 "id": "int-001",
                 "filename": "clip.mp4",
                 "frame_rate": 24,
-                # No duration_seconds — handle padding should extend freely
+                # No duration_seconds — handle padding extends freely
             },
         }
 
         edl = generate_edl("Test", selections, interviews, handle_frames=12)
 
-        # No pause data means pause==0 → zero handle (contiguous speech).
-        # So src_out = 60.0s with no padding and no duration clamp.
-        src_out = seconds_to_timecode(60.0, 24, False)
+        # Missing pause data → use default handles: src_in = 55 - 0.5 = 54.5s
+        # src_out = 60 + 0.5 = 60.5s (no duration clamp)
+        src_in = seconds_to_timecode(54.5, 24, False)
+        src_out = seconds_to_timecode(60.5, 24, False)
+        assert src_in in edl
         assert src_out in edl
 
     def test_df_timecode_offset_in_edl(self):
@@ -967,6 +969,62 @@ class TestFCPXML:
         assert "Strong opening" in fcpxml
         assert "My personal note" in fcpxml
 
+    def test_generate_fcpxml_tcformat_df_for_2997fps(self):
+        """FCPXML tcFormat should be DF for 29.97fps projects."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 0,
+                "end": 10,
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 29.97,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert 'tcFormat="DF"' in fcpxml
+
+    def test_generate_fcpxml_tcformat_ndf_for_24fps(self):
+        """FCPXML tcFormat should be NDF for 24fps projects."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 0,
+                "end": 10,
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        assert 'tcFormat="NDF"' in fcpxml
+
 
 class TestSmartHandles:
     """Tests for smart handle calculation using pause data."""
@@ -1007,11 +1065,11 @@ class TestSmartHandles:
         assert "00:00:09" in edl  # Start around 9.8s
         assert "00:00:20" in edl  # End around 20.24s
 
-    def test_edl_uses_zero_handles_when_no_pause_data(self):
-        """When pause data is absent (defaults to 0), zero handles are used.
+    def test_edl_uses_default_handles_when_pause_data_missing(self):
+        """When pause data is missing (key not present), default handles are used.
 
-        pause==0 means contiguous speech with no gap — there is no room for a
-        handle, so the padded in/out equals the raw in/out.
+        Missing pause data indicates analysis wasn't run, so we use full handles.
+        This is different from pause==0 (explicit), which means contiguous speech.
         """
         selections = [
             {
@@ -1019,7 +1077,40 @@ class TestSmartHandles:
                 "interview_id": "int-001",
                 "start": 10.0,
                 "end": 20.0,
-                # No pause_before_sec or pause_after_sec → both default to 0
+                # No pause_before_sec or pause_after_sec keys at all
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        edl = generate_edl(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+            handle_frames=12,  # 0.5s at 24fps
+        )
+
+        # Missing pause data → use default handles
+        assert "00:00:09:12" in edl  # 9.5s (10 - 0.5)
+        assert "00:00:20:12" in edl  # 20.5s (20 + 0.5)
+
+    def test_edl_uses_zero_handles_when_pause_explicitly_zero(self):
+        """When pause is explicitly 0, zero handles are used (contiguous speech)."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 20.0,
+                "pause_before_sec": 0,  # Explicitly 0
+                "pause_after_sec": 0,  # Explicitly 0
             }
         ]
         interviews = {
@@ -1075,6 +1166,73 @@ class TestSmartHandles:
         # Full handles used since pause * 0.8 > 0.5
         assert "00:00:09:12" in edl  # 9.5s
         assert "00:00:20:12" in edl  # 20.5s
+
+    def test_fcpxml_uses_default_handles_when_pause_data_missing(self):
+        """FCPXML uses default handles when pause data is missing."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 20.0,
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+            handle_frames=12,
+        )
+
+        # Missing pause data → use default handles: start=9.5s, duration=11s
+        # 9.5s at 24fps = 9.5 * 2400 = 22800/2400s
+        # 11s at 24fps = 11 * 2400 = 26400/2400s
+        assert 'start="22800/2400s"' in fcpxml
+        assert 'duration="26400/2400s"' in fcpxml
+
+    def test_fcpxml_uses_zero_handles_when_pause_explicitly_zero(self):
+        """FCPXML uses zero handles when pause is explicitly 0."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 20.0,
+                "pause_before_sec": 0,
+                "pause_after_sec": 0,
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        fcpxml = generate_fcpxml(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+            handle_frames=12,
+        )
+
+        # Explicit zero → zero handles: start=10s, duration=10s
+        # 10s at 24fps = 10 * 2400 = 24000/2400s
+        assert 'start="24000/2400s"' in fcpxml
+        assert 'duration="24000/2400s"' in fcpxml
 
 
 class TestUserNotesExport:
@@ -1142,3 +1300,173 @@ class TestUserNotesExport:
 
         assert "Strong delivery" in edl
         assert "Note:" not in edl  # No user notes prefix
+
+    def test_edl_comment_truncation_with_ellipsis(self):
+        """Long EDL comments are truncated at 200 chars with ellipsis."""
+        long_notes = "x" * 250  # Very long notes
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 20.0,
+                "role": "hook",
+                "editorial_notes": long_notes,
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        edl = generate_edl(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        # Comment should be truncated with ellipsis
+        assert "..." in edl
+        # The truncated comment should be about 200 chars + "[hook] " prefix
+        for line in edl.split("\n"):
+            if line.startswith("* COMMENT:"):
+                comment_content = line[10:]  # After "* COMMENT: "
+                assert len(comment_content) <= 203  # 200 + "..."
+                assert comment_content.endswith("...")
+                break
+
+    def test_edl_comment_not_truncated_when_short(self):
+        """Short EDL comments are not truncated."""
+        selections = [
+            {
+                "segment_id": "seg-1",
+                "interview_id": "int-001",
+                "start": 10.0,
+                "end": 20.0,
+                "role": "hook",
+                "editorial_notes": "Short note",
+            }
+        ]
+        interviews = {
+            "int-001": {
+                "id": "int-001",
+                "filename": "interview1.mp4",
+                "source_file": "/path/to/interview1.mp4",
+                "frame_rate": 24,
+                "duration_seconds": 120,
+            }
+        }
+
+        edl = generate_edl(
+            project_name="TestProject",
+            selections=selections,
+            interviews=interviews,
+        )
+
+        # No ellipsis for short comments
+        assert "* COMMENT: [hook] Short note" in edl
+        assert "..." not in edl
+
+
+class TestExportFromProject:
+    """Tests for generate_*_from_project functions with path resolution."""
+
+    def test_fcpxml_relative_source_file_resolved(self, tmp_path):
+        """Relative source_file paths are resolved against project directory."""
+        from plotline.export.fcpxml import generate_fcpxml_from_project
+
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        data_dir = project_dir / "data"
+        data_dir.mkdir()
+
+        selections_data = {
+            "segments": [
+                {
+                    "segment_id": "seg-1",
+                    "interview_id": "int-001",
+                    "start": 0,
+                    "end": 10,
+                    "position": 0,
+                }
+            ]
+        }
+        import json
+
+        (data_dir / "selections.json").write_text(json.dumps(selections_data))
+
+        manifest = {
+            "project_name": "TestProject",
+            "interviews": [
+                {
+                    "id": "int-001",
+                    "filename": "interview1.mp4",
+                    "source_file": "videos/interview1.mp4",  # Relative path
+                    "frame_rate": 24,
+                    "duration_seconds": 120,
+                }
+            ],
+        }
+
+        fcpxml = generate_fcpxml_from_project(
+            project_path=project_dir,
+            manifest=manifest,
+            handle_frames=12,
+            use_approvals=False,
+        )
+
+        # The source_file should be resolved to absolute path
+        expected_path = project_dir / "videos" / "interview1.mp4"
+        assert expected_path.as_uri() in fcpxml
+
+    def test_edl_relative_source_file_resolved(self, tmp_path):
+        """Relative source_file paths are resolved against project directory."""
+        from plotline.export.edl import generate_edl_from_project
+
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        data_dir = project_dir / "data"
+        data_dir.mkdir()
+
+        selections_data = {
+            "segments": [
+                {
+                    "segment_id": "seg-1",
+                    "interview_id": "int-001",
+                    "start": 0,
+                    "end": 10,
+                    "position": 0,
+                }
+            ]
+        }
+        import json
+
+        (data_dir / "selections.json").write_text(json.dumps(selections_data))
+
+        manifest = {
+            "project_name": "TestProject",
+            "interviews": [
+                {
+                    "id": "int-001",
+                    "filename": "interview1.mp4",
+                    "source_file": "videos/interview1.mp4",  # Relative path
+                    "frame_rate": 24,
+                    "duration_seconds": 120,
+                }
+            ],
+        }
+
+        edl = generate_edl_from_project(
+            project_path=project_dir,
+            manifest=manifest,
+            handle_frames=12,
+            use_approvals=False,
+        )
+
+        # EDL uses filename for comments, not source_file path
+        assert "interview1.mp4" in edl
