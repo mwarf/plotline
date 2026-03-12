@@ -20,10 +20,10 @@ def extract_json_from_response(response: str) -> str:
         response: Raw LLM response text
 
     Returns:
-        Extracted JSON string
+        Extracted JSON string (may be incomplete if truncated)
 
     Raises:
-        LLMResponseError: If no JSON found
+        LLMResponseError: If no JSON object start found
     """
     text = response.strip()
 
@@ -33,12 +33,43 @@ def extract_json_from_response(response: str) -> str:
         text = re.sub(r"```\s*", "", text)
         text = text.strip()
 
-    # Try to find complete JSON object
-    json_match = re.search(r"\{[\s\S]*\}", text)
-    if json_match:
-        return json_match.group(0)
+    # Find the start of the JSON object
+    start_idx = text.find("{")
+    if start_idx == -1:
+        raise LLMResponseError("No JSON object found in response")
 
-    raise LLMResponseError("No JSON object found in response")
+    # Try to find a complete JSON object with balanced braces
+    # This handles cases where there's text after the JSON
+    depth = 0
+    in_string = False
+    escape_next = False
+    end_idx = None
+
+    for i, char in enumerate(text[start_idx:], start_idx):
+        if escape_next:
+            escape_next = False
+            continue
+        if char == "\\":
+            escape_next = True
+            continue
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                end_idx = i + 1
+                break
+
+    if end_idx:
+        return text[start_idx:end_idx]
+
+    # No complete JSON found - return everything from { for repair attempts
+    return text[start_idx:]
 
 
 def repair_json(text: str) -> str:
@@ -105,10 +136,27 @@ def parse_llm_json(response: str) -> dict[str, Any]:
         pass
 
     # Third attempt: try to truncate at last valid position
-    # Find last complete key-value pair
+    # Strategy: Find the last complete object in an array (looking for }, patterns)
+    # or the last complete key-value pair
+
+    # Try to find last complete object in an array
+    last_complete_object = text.rfind("},")
+    if last_complete_object > 0:
+        truncated = text[: last_complete_object + 1]  # Keep the }
+        # Close any open structures
+        open_braces = truncated.count("{") - truncated.count("}")
+        open_brackets = truncated.count("[") - truncated.count("]")
+        truncated += "]" * max(0, open_brackets) + "}" * max(0, open_braces)
+
+        try:
+            return json.loads(truncated)
+        except json.JSONDecodeError:
+            pass
+
+    # Try to find last complete string value (ending with ",)
     last_valid = text.rfind('",')
     if last_valid > 0:
-        truncated = text[: last_valid + 2]
+        truncated = text[: last_valid + 1]  # Keep the closing quote
         # Close any open structures
         open_braces = truncated.count("{") - truncated.count("}")
         open_brackets = truncated.count("[") - truncated.count("]")
@@ -141,18 +189,40 @@ def validate_themes_response(data: dict[str, Any], interview_id: str) -> dict[st
     if "themes" not in data:
         raise LLMResponseError("Theme extraction response missing 'themes' key")
 
+    raw_themes = data["themes"]
+    if not isinstance(raw_themes, list):
+        raise LLMResponseError(f"'themes' must be a list, got {type(raw_themes).__name__}")
+
     themes = []
-    for i, theme in enumerate(data["themes"]):
+    for i, theme in enumerate(raw_themes):
+        if not isinstance(theme, dict):
+            raise LLMResponseError(f"Theme {i} must be an object, got {type(theme).__name__}")
+
         if not theme.get("name"):
             raise LLMResponseError(f"Theme {i} missing 'name'")
+
+        # Safely coerce strength to float
+        strength_raw = theme.get("strength", 0.5)
+        try:
+            strength = float(strength_raw)
+        except (ValueError, TypeError):
+            strength = 0.5
+
+        # Validate and filter segment_ids
+        raw_segment_ids = theme.get("segment_ids", [])
+        if not isinstance(raw_segment_ids, list):
+            raw_segment_ids = []
+        valid_segment_ids = [
+            sid for sid in raw_segment_ids if isinstance(sid, str) and sid.startswith(interview_id)
+        ]
 
         normalized = {
             "theme_id": theme.get("theme_id", f"theme_{i + 1:03d}"),
             "name": theme["name"],
             "description": theme.get("description", ""),
-            "segment_ids": theme.get("segment_ids", []),
+            "segment_ids": valid_segment_ids,
             "emotional_character": theme.get("emotional_character", ""),
-            "strength": float(theme.get("strength", 0.5)),
+            "strength": strength,
         }
 
         if theme.get("brief_alignment"):
@@ -160,13 +230,51 @@ def validate_themes_response(data: dict[str, Any], interview_id: str) -> dict[st
 
         themes.append(normalized)
 
+    # Validate intersections
+    raw_intersections = data.get("intersections", [])
+    if not isinstance(raw_intersections, list):
+        raw_intersections = []
+    intersections = []
+    for intersection in raw_intersections:
+        if not isinstance(intersection, dict):
+            continue
+        seg_id = intersection.get("segment_id", "")
+        if isinstance(seg_id, str) and seg_id.startswith(interview_id):
+            intersections.append(
+                {
+                    "segment_id": seg_id,
+                    "themes": intersection.get("themes", [])
+                    if isinstance(intersection.get("themes"), list)
+                    else [],
+                    "note": intersection.get("note", "")
+                    if isinstance(intersection.get("note"), str)
+                    else "",
+                }
+            )
+
     result = {
         "themes": themes,
-        "intersections": data.get("intersections", []),
+        "intersections": intersections,
     }
 
-    if data.get("off_message_segments"):
-        result["off_message_segments"] = data["off_message_segments"]
+    # Validate off_message_segments
+    raw_off_message = data.get("off_message_segments", [])
+    if isinstance(raw_off_message, list):
+        off_message_segments = []
+        for seg in raw_off_message:
+            if isinstance(seg, dict):
+                seg_id = seg.get("segment_id", "")
+                if isinstance(seg_id, str) and seg_id.startswith(interview_id):
+                    off_message_segments.append(
+                        {
+                            "segment_id": seg_id,
+                            "reason": seg.get("reason", "")
+                            if isinstance(seg.get("reason"), str)
+                            else "",
+                        }
+                    )
+        if off_message_segments:
+            result["off_message_segments"] = off_message_segments
 
     return result
 

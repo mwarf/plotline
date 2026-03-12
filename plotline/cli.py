@@ -779,7 +779,59 @@ def extract_themes(
     language = detect_project_language(manifest)
 
     if dry_run:
-        console.print("[yellow]Dry run mode - not sending to LLM[/yellow]")
+        from plotline.io import read_json
+        from plotline.llm.templates import build_language_instruction
+
+        brief = None
+        brief_path = project_dir / "brief.json"
+        if brief_path.exists():
+            brief = read_json(brief_path)
+
+        # Find first enriched interview to show prompt for
+        sample_interview = None
+        for interview in manifest.get("interviews", []):
+            if interview["stages"].get("enriched"):
+                sample_interview = interview
+                break
+
+        if not sample_interview:
+            console.print("[yellow]No enriched interviews found to generate prompt.[/yellow]")
+            return
+
+        interview_id = sample_interview["id"]
+        segments_path = project_dir / "data" / "segments" / f"{interview_id}.json"
+        if not segments_path.exists():
+            console.print(f"[yellow]Segments file not found for {interview_id}[/yellow]")
+            return
+
+        segments = read_json(segments_path)
+        template_name = (
+            "themes_brand.txt" if config.project_profile == "brand" and brief else "themes.txt"
+        )
+
+        variables = {
+            "TRANSCRIPT": template_manager.format_transcript_for_prompt(
+                segments.get("segments", [])
+            ),
+            "PROFILE": config.project_profile,
+            "INTERVIEW_ID": interview_id,
+        }
+
+        lang_instruction = build_language_instruction(language)
+        if lang_instruction:
+            variables["LANGUAGE_INSTRUCTION"] = lang_instruction
+
+        if brief:
+            variables["NARRATIVE_BRIEF"] = template_manager.format_brief_for_prompt(brief)
+
+        prompt = template_manager.render(template_name, variables)
+
+        console.print(f"[cyan]Dry run - prompt for {interview_id}:[/cyan]\n")
+        console.print("[dim]" + "=" * 60 + "[/dim]")
+        console.print(prompt)
+        console.print("[dim]" + "=" * 60 + "[/dim]")
+        console.print(f"\n[dim]Prompt length: {len(prompt):,} characters[/dim]")
+        console.print(f"[dim]Template: {template_name}[/dim]")
         return
 
     console.print("[cyan]Extracting themes from interviews...[/cyan]\n")
