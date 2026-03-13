@@ -44,15 +44,23 @@ def build_narrative_arc(
         if "segment_id" in seg:
             segments_by_id[seg["segment_id"]] = seg
 
+    # Calculate how many top segments to send based on target duration.
+    # We need enough candidate material (3x target) for the LLM to choose from.
+    durations = [s.get("end", 0) - s.get("start", 0) for s in all_segments]
+    avg_duration = sum(durations) / len(durations) if durations else 5.0
+    # Provide ~3x target duration worth of material, minimum 100 segments
+    target_duration = config.target_duration_seconds
+    candidate_count = max(100, int((target_duration * 3) / avg_duration))
+    candidate_count = min(candidate_count, len(all_segments))  # Don't exceed total
+
     top_segments = sorted(
         all_segments,
         key=lambda s: s.get("delivery", {}).get("composite_score", 0),
         reverse=True,
-    )[:100]
+    )[:candidate_count]
 
     transcript_str = template_manager.format_transcript_for_prompt(top_segments)
 
-    target_duration = config.target_duration_seconds
     target_minutes = target_duration // 60
 
     variables = {
@@ -75,7 +83,11 @@ def build_narrative_arc(
     if console:
         console.print(f"[dim]  Sending arc prompt ({len(prompt)} chars)...[/dim]")
 
-    response = client.complete(prompt, max_tokens=4096, temperature=0.7, console=console)
+    # Scale max_tokens: each arc entry is ~50 tokens; allow for overhead and alternates
+    estimated_segments = max(20, int(target_duration / avg_duration))
+    arc_max_tokens = max(4096, estimated_segments * 80 + 2048)
+
+    response = client.complete(prompt, max_tokens=arc_max_tokens, temperature=0.7, console=console)
 
     data = parse_llm_json(response)
     validated = validate_arc_response(data, target_duration)
@@ -210,11 +222,15 @@ def run_arc_construction(
         return {"status": "skipped", "reason": "already_exists"}
 
     all_segments = []
+    segments_by_id = {}
     for interview in manifest.get("interviews", []):
         segments_path = segments_dir / f"{interview['id']}.json"
         if segments_path.exists():
             data = read_json(segments_path)
-            all_segments.extend(data.get("segments", []))
+            for seg in data.get("segments", []):
+                all_segments.append(seg)
+                if "segment_id" in seg:
+                    segments_by_id[seg["segment_id"]] = seg
 
     if not all_segments:
         return {"status": "failed", "reason": "no_segments"}
@@ -234,6 +250,15 @@ def run_arc_construction(
         language=language,
         console=console,
     )
+
+    # Override LLM's estimated duration with actual computed duration
+    actual_duration = 0.0
+    for arc_item in arc.get("arc", []):
+        seg_id = arc_item.get("segment_id")
+        if seg_id and seg_id in segments_by_id:
+            seg = segments_by_id[seg_id]
+            actual_duration += seg.get("end", 0) - seg.get("start", 0)
+    arc["estimated_duration_seconds"] = round(actual_duration, 1)
 
     arc["project_name"] = manifest.get("project_name", "unknown")
     write_json(arc_path, arc)

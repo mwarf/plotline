@@ -57,7 +57,7 @@ def synthesize_themes(
     if console:
         console.print(f"[dim]  Sending synthesis prompt ({len(prompt)} chars)...[/dim]")
 
-    response = client.complete(prompt, max_tokens=4096, temperature=0.7, console=console)
+    response = client.complete(prompt, max_tokens=16384, temperature=0.7, console=console)
 
     data = parse_llm_json(response)
     validated = validate_synthesis_response(data)

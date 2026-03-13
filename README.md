@@ -58,10 +58,28 @@ pip install -e .                # All platforms (uses faster-whisper)
 pip install -e ".[macos]"       # macOS Apple Silicon — adds mlx-whisper for faster transcription
 ```
 
+### Optional: Speaker Diarization
+
+To identify and filter speakers in your interviews:
+
+```bash
+pip install -e ".[diarization]"
+```
+
+This installs pyannote.audio and PyTorch for speaker identification. See the [Diarization Setup Guide](docs/diarization-setup.md) for HuggingFace token configuration.
+
+**GPU acceleration (recommended):**
+- **macOS**: Apple Silicon uses MPS automatically — no extra steps
+- **Windows/Linux with NVIDIA GPU**: Install CUDA PyTorch first:
+  ```bash
+  pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+  pip install -e ".[diarization]"
+  ```
+
 ### Requirements
 
-- **Python 3.11+**
-- **FFmpeg** — Audio extraction
+- **Python 3.11+** — Runtime environment
+- **FFmpeg** — Extracts audio from video files for transcription
 
   ```bash
   # macOS
@@ -75,11 +93,30 @@ pip install -e ".[macos]"       # macOS Apple Silicon — adds mlx-whisper for f
   # Or with Chocolatey: choco install ffmpeg
   ```
 
-- **Ollama** (for local LLM) — [Install Ollama](https://ollama.ai)
+- **Ollama** — Runs AI models locally for theme analysis and narrative construction. [Install Ollama](https://ollama.ai)
   ```bash
-  # Pull a model
-  ollama pull llama3.1:8b
+  # Pull a model (choose based on your RAM - see Hardware Requirements below)
+  ollama pull llama3.1:70b    # 48GB+ RAM
+  ollama pull llama3.1:8b     # 16GB+ RAM (faster, lower quality)
   ```
+
+### Hardware Requirements
+
+| Component | Minimum | Recommended | Notes |
+|-----------|---------|-------------|-------|
+| **RAM** | 8GB | 16GB+ | 70B model requires 48GB+ RAM |
+| **Disk** | 20GB free | 50GB+ | Models are 4-40GB; projects grow with footage |
+| **GPU** | None (CPU works) | Apple Silicon or NVIDIA | GPU accelerates transcription 5-10x |
+| **CPU** | 4 cores | 8+ cores | More cores = faster processing |
+
+**Model Selection by RAM:**
+
+| Your RAM | Recommended Model | Quality | Speed |
+|----------|------------------|---------|-------|
+| 8-16 GB | `llama3.1:8b` | Good | Fast |
+| 16-32 GB | `llama3.1:8b` or `mistral:7b` | Good | Fast |
+| 32-48 GB | `llama3.1:70b` | Excellent | Medium |
+| 48+ GB | `llama3.1:70b` | Excellent | Medium |
 
 ### Verify Installation
 
@@ -132,7 +169,12 @@ plotline export --format edl
 | `plotline synthesize` | Cross-interview synthesis (LLM Pass 2)         |
 | `plotline arc`        | Build narrative arc (LLM Pass 3)               |
 | `plotline flags`      | Cultural sensitivity flagging (LLM Pass 4)     |
-| `plotline run`        | Run full pipeline (includes flags if enabled)  |
+| `plotline run`        | Run full pipeline                                 |
+
+**Common flags:**
+- `--force`, `-f` — Re-run even if already complete
+- `--from <stage>` — Resume from a specific stage (e.g., `--from transcribe`)
+- `--no-prompt`, `-q` — Skip interactive prompts (diarization)
 
 ### Reports
 
@@ -144,6 +186,8 @@ plotline export --format edl
 | `plotline report transcript`  | Per-interview transcript with waveform   |
 | `plotline report coverage`    | Brief coverage matrix                    |
 | `plotline report themes`      | Interactive theme explorer               |
+| `plotline report compare`     | Cross-interview best take comparison     |
+| `plotline report all`         | Generate all reports                     |
 
 ### Export
 
@@ -155,6 +199,15 @@ plotline export --format edl
 | `plotline export --handle 24`        | Custom handle padding (frames)                      |
 | `plotline export --alternates`       | Export alternate candidates as secondary timeline   |
 
+### Approval Management
+
+| Command                   | Description                              |
+| ------------------------- | ---------------------------------------- |
+| `plotline approve <id>`   | Approve a segment by ID                  |
+| `plotline reject <id>`    | Reject a segment by ID                   |
+| `plotline unapprove <id>` | Remove approval from a segment           |
+| `plotline approvals`      | List all approval statuses               |
+
 ### Other
 
 | Command                 | Description                              |
@@ -163,6 +216,8 @@ plotline export --format edl
 | `plotline flags`        | Cultural sensitivity flagging (LLM)      |
 | `plotline compare`      | Compare best takes (multi-interview)     |
 | `plotline speakers`     | Manage speaker names and colors          |
+| `plotline info`         | Show project configuration               |
+| `plotline diagnose`     | Diagnose common issues                   |
 
 ## Pipeline Stages
 
@@ -223,120 +278,49 @@ Pass 4 runs automatically in `plotline run` when `cultural_flags: true` is set i
 
 ### 5.5. Speaker Diarization & Filtering (Optional)
 
-Identify and filter speakers in interview audio:
+Identify and filter speakers in interview audio. Useful for excluding interviewers from your final timeline.
+
+**Prerequisites:**
+1. Install extra: `pip install -e ".[diarization]"`
+2. Create HuggingFace account and accept model terms (see [Diarization Setup Guide](docs/diarization-setup.md))
+3. Set token: `export HUGGINGFACE_TOKEN=hf_xxx`
 
 ```bash
-# Install diarization dependencies
-pip install plotline[diarization]
+# Run diarization
+plotline diarize
 
-# Run pipeline (auto-stops after diarization)
-plotline run
+# Interactive prompts help you identify and exclude interviewers
+? Exclude SPEAKER_00 from EDL? [Y/n] y
+? Name SPEAKER_01: Jane Doe
 
-# Output:
-# ✓ Extracted audio
-# ✓ Transcribed 3 interviews
-# ✓ Diarized 3 interviews (2 speakers detected)
-#
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Diarization complete. Configure speakers before LLM analysis.
-#
-# Run 'plotline speakers --preview' to identify who is who
-# Then run 'plotline run' to continue
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# Preview speakers with AI heuristics
-plotline speakers --preview
-
-# Output:
-# ┌─────────────┬──────────┬──────────┬─────────────────────────────────┬───────────┐
-# │ ID          │ Segments │ Duration │ Heuristic                       │ Suggested │
-# ├─────────────┼──────────┼──────────┼─────────────────────────────────┼───────────┤
-# │ SPEAKER_00  │ 45       │ 12.3 min  │ Likely INTERVIEWER (asks       │ Exclude? Y │
-# │             │          │          │ many questions, short segments)│           │
-# │ SPEAKER_01  │ 89       │ 34.7 min  │ Likely SUBJECT                  │ Exclude? N │
-# └─────────────┴──────────┴──────────┴─────────────────────────────────┴───────────┘
-
-# Configure speakers (exclude interviewer)
-plotline speakers SPEAKER_00 --name "Host" --role interviewer --exclude
-plotline speakers SPEAKER_01 --name "Jane Doe" --role subject --include
-
-# Continue pipeline (filtered speakers only)
+# Continue pipeline
 plotline run
 ```
 
-**Requirements:**
-- HuggingFace token with accepted model terms at:
-  - https://huggingface.co/pyannote/segmentation-3.0
-  - https://huggingface.co/pyannote/speaker-diarization-3.1
-- Set token: `export HUGGINGFACE_TOKEN=hf_xxx` or enter when prompted
-
-**Configuration (`plotline.yaml`):**
+Enable in `plotline.yaml`:
 ```yaml
-diarization_enabled: false           # Enable in run pipeline
-diarization_model: "pyannote/speaker-diarization-3.1"
-diarization_num_speakers: null       # Auto-detect if null
-diarization_min_speakers: 2
-diarization_max_speakers: 5
+diarization_enabled: true
 ```
 
-**Speaker configuration (`speakers.yaml`):**
-```yaml
-speakers:
-  SPEAKER_00:
-    name: "Host"
-    color: "#3B82F6"
-    role: "interviewer"        # interviewer, subject, or unknown
-    include_in_edl: false      # Exclude from timeline
-  SPEAKER_01:
-    name: "Jane Doe"
-    color: "#10B981"
-    role: "subject"
-    include_in_edl: true       # Include in timeline
-```
-
-**Speaker labels appear in:**
-- LLM prompts (themes, synthesis, arc)
-- Review and transcript reports
-- EDL/FCPXML exports (as comments/keywords)
-
-**How filtering works:**
-- Excluded speakers are filtered at the enrich stage
-- Filtered segments never enter LLM analysis
-- This saves LLM tokens and processing time
-- Re-run `plotline enrich --force` after changing speaker config
+> **Note:** After accepting HuggingFace model terms, wait for email confirmation (can take hours). See the [Diarization Setup Guide](docs/diarization-setup.md) for detailed instructions, GPU acceleration, and troubleshooting.
 
 ### 6. Export
 
 Generate timeline files for NLEs:
 
-- **EDL** — CMX 3600 format for DaVinci Resolve, Premiere Pro
-- **FCPXML** — Final Cut Pro XML with markers, keywords, chapter markers, metadata
-
-#### Handles
-
-Handles are padding added before and after each clip to give editors room for transitions. Default is 12 frames (0.5s at 24fps).
-
 ```bash
-plotline export --handle 24  # 1 second at 24fps
+plotline export --format edl       # DaVinci Resolve, Premiere Pro
+plotline export --format fcpxml    # Final Cut Pro
+plotline export --handle 24        # Custom handle padding (frames)
+plotline export --alternates       # Alternate takes as secondary timeline
 ```
 
-#### Smart Handles
+**Key features:**
+- **Handles**: 12-frame padding by default (0.5s at 24fps), auto-reduced for tight edits
+- **Chapter markers**: FCPXML includes markers at narrative role transitions
+- **Alternates**: Export all candidates for take comparison
 
-Plotline automatically reduces handles when natural pauses are short. If a segment has only 0.2s of silence before it, the handle is reduced instead of cutting into the next speaker. This prevents dialogue overlap in tight edits.
-
-#### Chapter Markers (FCPXML)
-
-FCPXML exports include chapter markers at narrative role transitions (Hook → Body → Climax → Resolution), making it easy to navigate story structure in Final Cut Pro.
-
-#### Alternate Candidates
-
-Export all alternate takes as a secondary timeline for easy comparison:
-
-```bash
-plotline export --alternates
-```
-
-This generates `{project}_alternates.edl` with segments grouped by position, so you can copy/paste between timelines to swap takes.
+See the [Export Guide](docs/export-guide.md) for NLE import workflows, handle details, and format options.
 
 ## Language Support
 
@@ -373,7 +357,7 @@ project_profile: documentary
 
 # LLM settings
 llm_backend: ollama
-llm_model: llama3.1:8b
+llm_model: llama3.1:70b
 privacy_mode: local
 
 # Whisper settings
@@ -423,7 +407,18 @@ export OPENAI_API_KEY=sk-...
 
 ## Profiles
 
-Profiles customize delivery scoring and narrative style:
+Profiles customize delivery scoring and narrative style. Choose based on your project type:
+
+| Project Type | Profile | Key Difference |
+|--------------|---------|----------------|
+| Documentary film, interviews | `documentary` | Emphasizes emotional authenticity |
+| Corporate video, marketing | `brand` | Emphasizes message clarity |
+| Branded doc, Indigenous content | `commercial-doc` | Hybrid + cultural sensitivity flags |
+
+**Quick decision:**
+- Making a traditional documentary? → `documentary`
+- Creating marketing/corporate content? → `brand`
+- Sponsored documentary or community storytelling? → `commercial-doc`
 
 ### Documentary
 
@@ -463,133 +458,38 @@ project_profile: commercial-doc
 Attach a creative brief to guide LLM analysis:
 
 ```bash
-# Markdown brief
 plotline brief brief.md
-
-# YAML brief
-plotline brief brief.yaml --show
 ```
 
-Brief format (Markdown):
-
+Brief format:
 ```markdown
 # Key Messages
-
 - Innovation drives our success
-- Customer satisfaction is our priority
-
-# Audience
-
-Decision-makers in enterprise technology
-
-# Tone
-
-Professional, confident, inspiring
 
 # Target Duration
-
 3-5 minutes
 
-# Must Include
-
-- Product demo footage
-- Customer testimonials
-
-# Avoid
-
-- Technical jargon
-- Competitor comparisons
+# Tone
+Professional, confident
 ```
+
+See the [Creative Briefs Guide](docs/creative-brief.md) for full format reference and examples.
 
 ## Reports
 
-### Dashboard
+Interactive HTML reports for reviewing your project:
 
-```bash
-plotline status --open
-```
+| Report | Command | Description |
+|--------|---------|-------------|
+| Dashboard | `plotline status --open` | Pipeline progress, interview cards |
+| Review | `plotline review --open` | Approve/reject segments, keyboard shortcuts |
+| Summary | `plotline report summary` | Executive summary, theme map |
+| Transcript | `plotline report transcript --interview ID` | Waveform + delivery metrics |
+| Coverage | `plotline report coverage` | Brief coverage matrix |
+| Themes | `plotline report themes` | Interactive theme explorer |
+| Compare | `plotline compare` | Cross-interview best takes |
 
-Shows pipeline progress, interview cards, stage completion.
-
-### Review
-
-```bash
-plotline review
-```
-
-Interactive selection review with:
-
-- Approve/reject buttons
-- Keyboard shortcuts (A, X, F, Space, arrows)
-- Audio playback
-- Theme tags
-
-### Summary
-
-```bash
-plotline report summary
-```
-
-Executive summary with:
-
-- Interview contributions
-- Theme map
-- Narrative arc overview
-- Delivery highlights
-
-### Transcript
-
-```bash
-plotline report transcript --interview interview_001
-```
-
-Per-interview transcript report with:
-
-- Waveform delivery timeline (sticky header)
-- Segment cards with delivery metrics
-- Theme pills on segments
-- Keyboard navigation and audio playback
-
-### Coverage Matrix
-
-```bash
-plotline report coverage
-```
-
-Brief coverage analysis with:
-
-- Message-by-theme coverage grid (strong/weak/gap tiers)
-- Per-message segment cards
-- Progress bar and gap identification
-- Requires a creative brief to be attached
-
-### Compare
-
-```bash
-plotline compare
-```
-
-Cross-interview best-take comparison with:
-
-- Candidate cards ranked by delivery score
-- Audio playback per segment
-- Sort/filter by theme or message
-- Cross-interview score normalization
-
-### Theme Explorer
-
-```bash
-plotline report themes
-```
-
-Interactive explorer for reviewing project content by meaning and theme:
-
-- **Sidebar navigation**: List of all unified themes with segment counts and strength indicators
-- **Theme filtering**: Click a theme to instantly see all relevant segments and theme description
-- **Multi-theme intersections**: Visual badges on segments assigned to 2 or more themes
-- **Interactive controls**: Sort by delivery score/time, group by interview, and search text
-- **Audio playback**: Embedded player for quick review of any themed segment
-- **Offline compatible**: Works entirely under the `file://` protocol
+All reports work offline and include audio playback. See the [Reports Guide](docs/reports-guide.md) for keyboard shortcuts and detailed features.
 
 ## Project Structure
 
@@ -619,77 +519,16 @@ my-project/
 
 ## Troubleshooting
 
-### FFmpeg not found
+**Common issues:**
 
-Install FFmpeg for your platform:
+| Issue | Solution |
+|-------|----------|
+| FFmpeg not found | `brew install ffmpeg` (macOS) or `winget install ffmpeg` (Windows) |
+| Ollama not running | `ollama serve` then `ollama pull llama3.1:70b` |
+| No approved segments | Run `plotline review --open` and approve segments |
+| Diarization 401 error | Wait for HuggingFace model access confirmation (up to 24h) |
 
-```bash
-# macOS
-brew install ffmpeg
-
-# Ubuntu/Debian
-sudo apt install ffmpeg
-
-# Windows
-winget install ffmpeg
-# Or with Chocolatey: choco install ffmpeg
-```
-
-On Windows, restart your terminal after installing so FFmpeg is found in PATH.
-
-```bash
-# Verify (all platforms)
-ffmpeg -version
-```
-
-### Ollama not running
-
-```bash
-# Start Ollama
-ollama serve
-
-# Pull model
-ollama pull llama3.1:8b
-```
-
-### Model not pulled
-
-```bash
-plotline doctor
-# Shows: Model 'llama3.1:8b' not pulled
-# Fix:
-ollama pull llama3.1:8b
-```
-
-### Insufficient disk space
-
-Audio extraction requires ~2MB per minute of video. Check available space:
-
-```bash
-plotline validate
-```
-
-### No audio track
-
-Videos without audio tracks will fail extraction:
-
-```
-Error: interview.mp4 has no audio track
-```
-
-### LLM timeout
-
-For long interviews, increase timeout in config:
-
-```yaml
-# Not yet exposed, but LLM client supports it
-```
-
-Or use a faster/smaller model:
-
-```yaml
-llm_model: llama3.1:8b
-```
+See the [FAQ](docs/FAQ.md) for detailed troubleshooting and solutions.
 
 ## Development
 

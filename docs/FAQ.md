@@ -30,7 +30,7 @@ Verify: `ffmpeg -version`
 
 1. Download from [ollama.ai](https://ollama.ai)
 2. Install the application
-3. Pull a model: `ollama pull llama3.1:8b`
+3. Pull a model: `ollama pull llama3.1:70b`
 4. Verify: `ollama list`
 
 ### How do I verify my installation?
@@ -40,6 +40,80 @@ plotline doctor
 ```
 
 This checks all dependencies and reports any issues.
+
+---
+
+## Speaker Diarization
+
+> **Setup:** See the [Diarization Setup Guide](diarization-setup.md) for HuggingFace configuration, GPU acceleration, and installation.
+
+### Why does diarization fail with "401 Unauthorized"?
+
+You likely haven't waited for model access approval. After accepting terms:
+
+1. Check your email for confirmation
+2. Can take up to 24 hours to activate
+3. Verify access at [huggingface.co/pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) — you should see the model files listed
+
+### Diarization is very slow. How do I enable GPU acceleration?
+
+Ensure GPU is being used:
+
+**Verify detection:**
+```bash
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, MPS: {torch.backends.mps.is_available()}')"
+```
+
+**For NVIDIA GPU (Windows/Linux):**
+```bash
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+**For macOS:** MPS is automatic on Apple Silicon — no extra steps needed.
+
+### "Out of memory" during diarization
+
+Reduce the speaker range in your `plotline.yaml`:
+
+```yaml
+diarization_max_speakers: 3  # Lower from default 5
+```
+
+Or force CPU mode (slower but more reliable):
+```bash
+CUDA_VISIBLE_DEVICES="" plotline diarize
+```
+
+### Diarization detected no speakers
+
+**Possible causes:**
+
+1. Audio is too short (less than 30 seconds)
+2. Audio quality is poor (too noisy)
+3. Speaker range misconfigured
+
+**Solutions:**
+```yaml
+diarization_min_speakers: 1
+diarization_max_speakers: 3
+```
+
+### The HuggingFace token prompt appears every time
+
+**Cause:** Token not being cached properly.
+
+**Solution:**
+1. Check cache file exists: `cat ~/.plotline/hf_token`
+2. Or set environment variable permanently:
+   ```bash
+   # macOS/Linux — add to ~/.zshrc or ~/.bashrc
+   echo 'export HUGGINGFACE_TOKEN=hf_xxx' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+   ```powershell
+   # Windows PowerShell
+   [Environment]::SetEnvironmentVariable("HUGGINGFACE_TOKEN", "hf_xxx", "User")
+   ```
 
 ---
 
@@ -206,11 +280,11 @@ Click the "Notes" button on any segment in the review report. Notes are included
 
 | Model | Speed | Quality | Best For |
 |-------|-------|---------|----------|
-| `llama3.1:8b` | Fast | Good | Default, most projects |
-| `llama3.1:70b` | Slow | Excellent | Complex narratives |
+| `llama3.1:70b` | Medium | Excellent | Default, most projects |
+| `llama3.1:8b` | Fast | Good | Quick drafts, limited RAM |
 | `mistral:7b` | Fast | Good | Quick drafts |
 
-For Apple Silicon, `llama3.1:8b` is the recommended default.
+For Apple Silicon with 16GB+ RAM, `llama3.1:70b` is recommended. Use `llama3.1:8b` on machines with less memory.
 
 ### Can I use a cloud LLM?
 

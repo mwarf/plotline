@@ -126,6 +126,13 @@ class LLMClient:
                 if content is None:
                     raise LLMResponseError("No content in LLM message")
 
+                finish_reason = getattr(choices[0], "finish_reason", None)
+                if finish_reason == "length" and console:
+                    console.print(
+                        "[yellow]  Warning: Response truncated (hit max_tokens limit). "
+                        "Output may be incomplete.[/yellow]"
+                    )
+
                 return content
 
             except LLMResponseError:

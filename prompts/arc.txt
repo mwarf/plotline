@@ -29,12 +29,14 @@ INSTRUCTIONS:
 7. If the profile is "documentary," the arc can be non-linear, circular, or seasonal — follow the material, not a formula.
 8. If the profile is "brand," ensure every key message from the brief is covered. Flag any coverage gaps.
 
+IMPORTANT: You must select enough segments so their combined duration (calculated from start/end times) totals approximately {{TARGET_DURATION}}. With short segments, this may require selecting many segments. Do the arithmetic.
+
 RESPONSE FORMAT:
 Respond with valid JSON only. No markdown, no backticks, no preamble.
 
 {
-  "target_duration_seconds": 720,
-  "estimated_duration_seconds": 695,
+  "target_duration_seconds": <target in seconds>,
+  "estimated_duration_seconds": <sum of (end - start) for all selected segments>,
   "narrative_mode": "emergent",
   "arc": [
     {

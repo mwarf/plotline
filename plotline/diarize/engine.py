@@ -117,7 +117,7 @@ def diarize_audio(
     if console:
         console.print(f"[dim]  Loading diarization model...[/dim]")
 
-    pipeline = Pipeline.from_pretrained(model, use_auth_token=hf_token)
+    pipeline = Pipeline.from_pretrained(model, token=hf_token)
 
     device = get_device()
     if console:
@@ -142,7 +142,7 @@ def diarize_audio(
     speakers = set()
     segments = []
 
-    for turn, _, speaker in diarization.itertracks(yield_label=True):
+    for turn, _, speaker in diarization.speaker_diarization.itertracks(yield_label=True):
         speakers.add(speaker)
         segments.append(
             {
@@ -283,23 +283,24 @@ def diarize_all_interviews(
             write_json(transcript_path, updated_transcript)
 
             speakers_file = project_path / "speakers.yaml"
-            if not speakers_file.exists():
-                speaker_config = load_speaker_config(project_path)
-                detected_speakers = diarization_result["speakers"]
-                colors = generate_default_colors()
+            speaker_config = load_speaker_config(project_path)
+            detected_speakers = diarization_result["speakers"]
+            colors = generate_default_colors()
+            new_speaker_count = 0
 
-                for i, speaker_id in enumerate(detected_speakers):
-                    if speaker_id not in speaker_config.speakers:
-                        speaker_config.speakers[speaker_id] = {
-                            "name": f"Speaker {i + 1}",
-                            "color": colors[i % len(colors)],
-                        }
+            for i, speaker_id in enumerate(detected_speakers):
+                if speaker_id not in speaker_config.speakers:
+                    speaker_config.speakers[speaker_id] = {
+                        "name": f"Speaker {i + 1}",
+                        "color": colors[i % len(colors)],
+                    }
+                    new_speaker_count += 1
 
-                save_speaker_config(speaker_config, speakers_file)
-                if console:
-                    console.print(
-                        f"[dim]  Created speakers.yaml with {len(detected_speakers)} speakers[/dim]"
-                    )
+            save_speaker_config(speaker_config, speakers_file)
+            if console and new_speaker_count > 0:
+                console.print(
+                    f"[dim]  Added {new_speaker_count} new speaker(s) to speakers.yaml[/dim]"
+                )
 
             interview["stages"]["diarized"] = True
 

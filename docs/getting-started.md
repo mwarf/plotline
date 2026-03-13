@@ -1,6 +1,8 @@
 # Getting Started with Plotline
 
-Get from raw interviews to an editable DaVinci Resolve timeline in 5 minutes.
+Get from raw interviews to an editable DaVinci Resolve timeline with minimal manual work.
+
+> **Time expectations:** 5 minutes of user interaction (running commands, reviewing). Processing time varies: 10-15 minutes per hour of footage on Apple Silicon, longer on CPU.
 
 ---
 
@@ -10,7 +12,7 @@ Before you start, ensure you have:
 
 - **Python 3.11+** — Check with `python --version`
 - **FFmpeg** — Install with `brew install ffmpeg` (macOS), `sudo apt install ffmpeg` (Ubuntu/Debian), or `winget install ffmpeg` (Windows)
-- **Ollama** — Download from [ollama.ai](https://ollama.ai), then `ollama pull llama3.1:8b`
+- **Ollama** — Download from [ollama.ai](https://ollama.ai), then `ollama pull llama3.1:70b`
 
 Verify everything works:
 
@@ -20,7 +22,7 @@ plotline doctor
 
 ---
 
-## 5-Minute Quickstart
+## Quickstart
 
 ### 1. Create a Project
 
@@ -54,6 +56,18 @@ This runs all stages automatically:
 - Selects the best segments
 
 **Time:** ~10-15 minutes per hour of footage (varies by hardware)
+
+### Optional: Speaker Identification
+
+If your interviews have multiple speakers, you can identify and filter them:
+
+```bash
+pip install -e ".[diarization]"
+export HUGGINGFACE_TOKEN=hf_xxx  # See Diarization Setup guide
+plotline diarize
+```
+
+See the [Diarization Setup Guide](diarization-setup.md) for HuggingFace configuration.
 
 ### 4. Review the Selections
 
@@ -139,45 +153,13 @@ Generates a secondary timeline with alternate takes for comparison.
 
 ## Common Issues
 
-### "FFmpeg not found"
+| Issue | Solution |
+|-------|----------|
+| FFmpeg not found | `brew install ffmpeg` (macOS) or see [FAQ](FAQ.md) |
+| Ollama not running | `ollama serve && ollama pull llama3.1:70b` |
+| No approved segments | Run `plotline review --open` and approve with `A` |
 
-Install FFmpeg:
-```bash
-# macOS
-brew install ffmpeg
-
-# Ubuntu/Debian
-sudo apt install ffmpeg
-
-# Windows
-winget install ffmpeg
-# Or with Chocolatey: choco install ffmpeg
-```
-
-On Windows, restart your terminal after installing so FFmpeg is found in PATH.
-
-### "Ollama not running"
-
-Start Ollama:
-```bash
-ollama serve
-```
-
-### "Model not pulled"
-
-Download the LLM:
-```bash
-ollama pull llama3.1:8b
-```
-
-### "No approved segments to export"
-
-Approve segments in the review report:
-```bash
-plotline review --open
-# Press A to approve segments
-plotline export --format edl
-```
+See the [FAQ](FAQ.md) for detailed troubleshooting.
 
 ---
 

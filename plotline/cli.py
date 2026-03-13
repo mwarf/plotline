@@ -356,6 +356,123 @@ def transcribe(
 # Phase 2.5: Speaker Diarization
 
 
+def _prompt_speaker_review(project_dir: Path) -> None:
+    """Interactive speaker review after diarization."""
+    from rich.prompt import Prompt
+
+    from plotline.diarize.speakers import (
+        DEFAULT_COLORS,
+        format_duration as format_speaker_duration,
+        get_all_speakers_from_project,
+        get_speaker_statistics,
+        identify_speaker_role,
+        load_speaker_config,
+        save_speaker_config,
+    )
+
+    speakers = get_all_speakers_from_project(project_dir)
+    if not speakers:
+        return
+
+    speaker_data = []
+    for spk_id in sorted(speakers.keys()):
+        stats = get_speaker_statistics(project_dir, spk_id)
+        heuristic = identify_speaker_role(stats)
+        speaker_data.append(
+            {
+                "id": spk_id,
+                "stats": stats,
+                "heuristic": heuristic,
+            }
+        )
+
+    table = Table(title="\nDetected Speakers")
+    table.add_column("ID", style="cyan")
+    table.add_column("Segments", style="dim")
+    table.add_column("Duration", style="dim")
+    table.add_column("Heuristic", style="yellow")
+    table.add_column("Exclude?", style="green")
+
+    for spk in speaker_data:
+        table.add_row(
+            spk["id"],
+            str(spk["stats"]["segment_count"]),
+            format_speaker_duration(spk["stats"]["total_duration"]),
+            spk["heuristic"]["reason"],
+            "Y" if spk["heuristic"]["suggest_exclude"] else "N",
+        )
+
+    console.print(table)
+
+    config = load_speaker_config(project_dir)
+    speakers_file = project_dir / "speakers.yaml"
+    excluded_count = 0
+    named_count = 0
+
+    for spk in speaker_data:
+        spk_id = spk["id"]
+        existing = config.speakers.get(spk_id, {})
+
+        if spk["heuristic"]["suggest_exclude"]:
+            default = "y"
+            response = Prompt.ask(
+                f"\n? Exclude {spk_id} from EDL?",
+                choices=["y", "n"],
+                default=default,
+            )
+            if response.lower() == "y":
+                existing["role"] = "interviewer"
+                existing["include_in_edl"] = False
+                excluded_count += 1
+            else:
+                existing["role"] = "subject"
+                existing["include_in_edl"] = True
+        else:
+            existing["role"] = existing.get("role", "subject")
+            existing["include_in_edl"] = existing.get("include_in_edl", True)
+
+        if existing.get("include_in_edl", True):
+            current_name = existing.get("name", speakers[spk_id].get("name", spk_id))
+            new_name = Prompt.ask(
+                f"? Name {spk_id}",
+                default=current_name if current_name != spk_id else "",
+            )
+            if new_name.strip():
+                existing["name"] = new_name.strip()
+                named_count += 1
+            elif "name" not in existing:
+                idx = 0
+                if spk_id.startswith("SPEAKER_"):
+                    try:
+                        idx = int(spk_id.split("_")[1])
+                    except (IndexError, ValueError):
+                        pass
+                existing["name"] = f"Speaker {idx + 1}"
+
+        if "color" not in existing:
+            idx = 0
+            if spk_id.startswith("SPEAKER_"):
+                try:
+                    idx = int(spk_id.split("_")[1])
+                except (IndexError, ValueError):
+                    pass
+            existing["color"] = DEFAULT_COLORS[idx % len(DEFAULT_COLORS)]
+
+        config.speakers[spk_id] = existing
+
+    save_speaker_config(config, speakers_file)
+
+    summary_parts = []
+    if excluded_count > 0:
+        summary_parts.append(f"excluded {excluded_count}")
+    if named_count > 0:
+        summary_parts.append(f"named {named_count}")
+    if summary_parts:
+        console.print(f"\n[green]✓[/green] Updated speakers.yaml ({', '.join(summary_parts)})")
+    else:
+        console.print("\n[green]✓[/green] speakers.yaml unchanged")
+
+
 @app.command("diarize")
 def diarize_speakers(
     num_speakers: int | None = typer.Option(
@@ -364,6 +481,9 @@ def diarize_speakers(
     min_speakers: int = typer.Option(2, "--min-speakers", help="Minimum speakers to detect"),
     max_speakers: int = typer.Option(5, "--max-speakers", help="Maximum speakers to detect"),
     force: bool = typer.Option(False, "--force", "-f", help="Re-diarize already processed files"),
+    no_prompt: bool = typer.Option(
+        False, "--no-prompt", "-q", help="Skip interactive speaker review"
+    ),
 ) -> None:
     """Identify speakers in audio using pyannote.audio (optional stage).
 
@@ -422,7 +542,12 @@ def diarize_speakers(
     )
 
     if results["diarized"] > 0:
-        console.print("\nSpeaker names can be customized in [cyan]speakers.yaml[/cyan]")
+        import sys
+
+        if not no_prompt and sys.stdin.isatty():
+            _prompt_speaker_review(project_dir)
+        else:
+            console.print("\nSpeaker names can be customized in [cyan]speakers.yaml[/cyan]")
         console.print("Next step: [cyan]plotline analyze[/cyan] (delivery analysis)")
 
     if results["failed"] > 0:

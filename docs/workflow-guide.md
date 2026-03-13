@@ -52,24 +52,15 @@ plotline transcribe
 ```
 
 ### 2.5. Speaker Diarization (Optional)
-Identifies different speakers in your interviews and labels each segment with the speaker. Useful for multi-subject interviews.
+
+Identifies different speakers in your interviews. Useful for excluding interviewers from the final timeline.
+
 ```bash
-# Install diarization dependencies first
-pip install plotline[diarization]
-
-# Run diarization after transcription
+pip install -e ".[diarization]"
 plotline diarize
-
-# View and edit speaker names
-plotline speakers --list
-plotline speakers --edit
 ```
 
-**Requirements:** HuggingFace token with accepted terms at:
-- https://huggingface.co/pyannote/segmentation-3.0
-- https://huggingface.co/pyannote/speaker-diarization-3.1
-
-Set token: `export HUGGINGFACE_TOKEN=hf_xxx` or enter when prompted.
+**Requires HuggingFace token.** See the [Diarization Setup Guide](diarization-setup.md) for step-by-step configuration.
 
 ### 3. Analyze Delivery
 Extracts acoustic features (energy, speech rate, pitch variation, pauses) to grade the emotional delivery of every segment.
