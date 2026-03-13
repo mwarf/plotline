@@ -14,6 +14,8 @@ Before you start, ensure you have:
 - **FFmpeg** — Install with `brew install ffmpeg` (macOS), `sudo apt install ffmpeg` (Ubuntu/Debian), or `winget install ffmpeg` (Windows)
 - **Ollama** — Download from [ollama.ai](https://ollama.ai), then `ollama pull llama3.1:70b`
 
+> **Quality note:** Local models (Ollama) work well for drafts and privacy-sensitive projects. For best output quality, consider using Claude or GPT-4 with an API key. See [LLM Quality](../README.md#llm-quality--privacy-tradeoffs) for details.
+
 Verify everything works:
 
 ```bash
