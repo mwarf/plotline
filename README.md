@@ -148,13 +148,14 @@ plotline export --format edl
 
 ### Project Management
 
-| Command                    | Description                |
-| -------------------------- | -------------------------- |
-| `plotline init <name>`     | Create a new project       |
-| `plotline add <videos...>` | Add video files to project |
-| `plotline status`          | Show pipeline progress     |
-| `plotline doctor`          | Check dependencies         |
-| `plotline validate`        | Validate project data      |
+| Command                       | Description                              |
+| ----------------------------- | ---------------------------------------- |
+| `plotline init <name>`        | Create a new project                     |
+| `plotline add <videos...>`    | Add video files to project               |
+| `plotline remove <id>`        | Remove interview and associated data     |
+| `plotline status`             | Show pipeline progress                   |
+| `plotline doctor`             | Check dependencies                       |
+| `plotline validate`           | Validate project data                    |
 
 ### Pipeline Stages
 

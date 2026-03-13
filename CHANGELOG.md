@@ -2,6 +2,12 @@
 
 All notable changes to Plotline will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`plotline remove` command**: Remove interviews and all associated data from a project. Deletes source audio, transcripts, delivery analysis, themes, diarization, and project-level files (synthesis, selections, arc). Includes confirmation prompt with file size preview.
+
 ## [0.3.7] - 2026-03-09
 
 Export pipeline and report template correctness fixes, plus full Windows/Linux PC compatibility.

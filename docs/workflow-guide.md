@@ -30,6 +30,11 @@ plotline add /path/to/raw/interview_01.mov
 plotline add /path/to/raw/interview_02.mov
 ```
 
+**Remove an interview** (deletes all associated data):
+```bash
+plotline remove interview_001
+```
+
 ### 3. Add a Creative Brief (Optional but Recommended)
 If you have a creative brief with target audiences, tone, and key messages, save it as `brief.md` or `brief.yaml` in your project root. Plotline uses this to grade segments on how well they align with your project goals.
 

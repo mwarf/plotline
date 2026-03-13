@@ -43,6 +43,12 @@ plotline add ~/Videos/interview1.mov ~/Videos/interview2.mov
 
 Plotline extracts metadata (frame rate, duration, timecode) and prepares for processing.
 
+**Remove an interview:**
+```bash
+plotline remove interview_001    # With confirmation prompt
+plotline remove interview_001 -y # Skip confirmation
+```
+
 ### 3. Run the Pipeline
 
 ```bash
