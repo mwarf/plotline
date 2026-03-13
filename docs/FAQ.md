@@ -278,13 +278,19 @@ Click the "Notes" button on any segment in the review report. Notes are included
 
 ### Which model should I use?
 
-| Model | Speed | Quality | Best For |
-|-------|-------|---------|----------|
-| `llama3.1:70b` | Medium | Excellent | Default, most projects |
-| `llama3.1:8b` | Fast | Good | Quick drafts, limited RAM |
-| `mistral:7b` | Fast | Good | Quick drafts |
+**For best output quality (production work):**
+- `claude-3-sonnet` or `claude-3-opus` — Best narrative quality, most coherent arcs
+- `gpt-4` — Excellent alternative
 
-For Apple Silicon with 16GB+ RAM, `llama3.1:70b` is recommended. Use `llama3.1:8b` on machines with less memory.
+**For good quality with Ollama tooling:**
+- `glm-4` via Ollama — Good results, requires Ollama account (not fully local)
+
+**For privacy-first or offline work:**
+- `llama3.1:70b` — Best fully-local option (requires 48GB+ RAM)
+- `llama3.1:8b` — Acceptable for drafts (requires 16GB+ RAM)
+- `mistral:7b` — Fast, good for quick drafts
+
+> **Quality impact:** Cloud models (Claude, GPT-4) produce significantly better themes, arcs, and segment selections. Local models may miss subtle connections or produce less coherent narratives. If output quality is critical, use a cloud backend.
 
 ### Can I use a cloud LLM?
 
@@ -317,10 +323,11 @@ plotline report coverage --open
 
 ### How do I improve LLM results?
 
-1. **Add a creative brief** — Guide the LLM with your goals
-2. **Try a larger model** — `llama3.1:70b` for complex narratives
-3. **Adjust delivery weights** — Tune what "good delivery" means for your content
-4. **Filter speakers** — Exclude interviewer questions if present
+1. **Upgrade your LLM** — Switch from local to cloud (Claude/GPT-4) for dramatically better results
+2. **Add a creative brief** — Guide the LLM with your goals
+3. **Try a larger model** — `llama3.1:70b` for complex narratives
+4. **Adjust delivery weights** — Tune what "good delivery" means for your content
+5. **Filter speakers** — Exclude interviewer questions if present
 
 ---
 

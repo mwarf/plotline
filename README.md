@@ -405,6 +405,27 @@ export ANTHROPIC_API_KEY=sk-...
 export OPENAI_API_KEY=sk-...
 ```
 
+### LLM Quality & Privacy Tradeoffs
+
+The LLM directly determines output quality. Plotline's theme extraction, narrative arc, and segment selection all depend on the model's reasoning capability.
+
+| Backend | Quality | Privacy | Best For |
+|---------|---------|---------|----------|
+| **Claude** (Sonnet/Opus) | ★★★★★ | Data to API | Production, complex narratives |
+| **GPT-4** | ★★★★★ | Data to API | Production work |
+| **Ollama + GLM-4** | ★★★★☆ | Data to API* | Good quality, familiar tooling |
+| **Ollama + Llama 3.1 70B** | ★★★☆☆ | Fully local | Privacy-required, drafts |
+| **Ollama + Llama 3.1 8B** | ★★☆☆☆ | Fully local | Quick tests, limited hardware |
+
+> *GLM-4 through Ollama requires Ollama account authentication; not truly local.
+
+**Recommendation:**
+- **Production work:** Use Claude or GPT-4 for best narrative coherence
+- **Good quality + familiar tooling:** Ollama with GLM-4
+- **Privacy-first / offline:** Ollama with Llama 3.1 70B (results may require more manual review)
+
+> **Note:** Local models work well for drafts and privacy-sensitive projects, but may miss nuanced themes or produce less coherent narrative structure. For mission-critical projects, cloud LLMs are strongly recommended.
+
 ## Profiles
 
 Profiles customize delivery scoring and narrative style. Choose based on your project type:
